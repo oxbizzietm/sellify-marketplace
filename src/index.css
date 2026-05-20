@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur border border-white/70 shadow-sm;
+  }
+
+  .primary-button {
+    @apply inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-emerald-200 transition hover:bg-emerald-700 hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .accent-button {
+    @apply inline-flex items-center justify-center rounded-full bg-amber-400 px-5 py-2.5 text-sm font-extrabold text-slate-950 shadow-sm shadow-amber-100 transition hover:bg-amber-300 hover:-translate-y-0.5 active:translate-y-0;
+  }
+}
