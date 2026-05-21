@@ -29,8 +29,8 @@ function Login() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 flex items-center justify-center">
-      <div className="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center overflow-x-hidden bg-slate-50 px-4 py-10">
+      <div className="w-full max-w-md rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
         
         {/* LOGO */}
         <div className="mb-7 text-center">
@@ -40,7 +40,7 @@ function Login() {
             </div>
 
             <div className="text-left leading-none">
-              <div className="text-3xl font-black tracking-tight text-black">
+              <div className="text-2xl font-black tracking-tight text-black sm:text-3xl">
                 ellify
               </div>
 
@@ -74,7 +74,7 @@ function Login() {
             <input
               type="email"
               placeholder="e.g. abubakar@gmail.com"
-              className="w-full rounded-2xl border border-slate-300 px-5 py-4 outline-none transition focus:border-green-500"
+              className="min-w-0 w-full rounded-2xl border border-slate-300 px-5 py-4 outline-none transition focus:border-green-500"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -89,7 +89,7 @@ function Login() {
             <input
               type="password"
               placeholder="Your password"
-              className="w-full rounded-2xl border border-slate-300 px-5 py-4 outline-none transition focus:border-green-500"
+              className="min-w-0 w-full rounded-2xl border border-slate-300 px-5 py-4 outline-none transition focus:border-green-500"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

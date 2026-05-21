@@ -224,14 +224,14 @@ function SellProduct() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8">
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 bg-gradient-to-r from-green-50 via-white to-green-100 px-8 py-8">
+    <main className="min-h-screen overflow-x-hidden bg-slate-50 px-4 py-8">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-green-50 via-white to-green-100 px-5 py-6 sm:px-8 sm:py-8">
           <p className="text-sm font-black uppercase tracking-widest text-green-600">
             Sell on Sellify
           </p>
 
-          <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
             Post a new listing
           </h1>
 
@@ -242,10 +242,10 @@ function SellProduct() {
 
         <form
           onSubmit={handleSubmit}
-          className="grid gap-8 px-8 py-8 lg:grid-cols-[1fr_0.9fr]"
+          className="grid gap-6 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[1fr_0.9fr] lg:gap-8"
         >
           <div className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 p-6">
+            <div className="rounded-3xl border border-slate-200 p-4 sm:p-6">
               <h2 className="text-xl font-black text-slate-900">
                 Listing details
               </h2>
@@ -347,7 +347,7 @@ function SellProduct() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 p-6">
+            <div className="rounded-3xl border border-slate-200 p-4 sm:p-6">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-black text-slate-900">
                   Product images

@@ -816,6 +816,8 @@ function Chat() {
     productSoldMap[activeChat?.productId] === true;
 
   const contactInfo = getChatContactInfo(activeChat, otherUser);
+  const chatListOrderClass = activeChat ? "order-2" : "order-1";
+  const messagePaneOrderClass = activeChat ? "order-1" : "order-2";
 
   function renderMessageMeta(messageItem, isMe) {
     return (
@@ -862,7 +864,7 @@ function Chat() {
 
     return (
       <div
-        className={`max-w-[400px] rounded-2xl border p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
+        className={`max-w-full break-words rounded-2xl border p-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md sm:max-w-[400px] sm:p-4 ${
           isMe ? "rounded-br-md" : "rounded-bl-md"
         } ${meta.cardClass}`}
       >
@@ -898,7 +900,7 @@ function Chat() {
                 Offer amount
               </p>
 
-              <p className={`mt-0.5 text-2xl font-black ${meta.amountClass}`}>
+              <p className={`mt-0.5 text-xl font-black sm:text-2xl ${meta.amountClass}`}>
                 {formatOfferAmount(messageItem.offerAmount)}
               </p>
 
@@ -1007,7 +1009,7 @@ function Chat() {
   }
 
   return (
-    <main className="h-[calc(100vh-96px)] overflow-hidden bg-[#eaf2f6] px-4 py-5">
+    <main className="min-h-screen overflow-x-hidden bg-[#eaf2f6] px-2 py-3 sm:px-4 lg:h-[calc(100vh-96px)] lg:min-h-0 lg:overflow-hidden lg:py-5">
       <style>
         {`
           .sellify-scroll::-webkit-scrollbar {
@@ -1030,10 +1032,12 @@ function Chat() {
         `}
       </style>
 
-      <div className="mx-auto grid h-full max-w-7xl overflow-hidden rounded-[1.7rem] bg-white shadow-xl lg:grid-cols-[390px_1fr]">
-        <aside className="flex h-full min-h-0 flex-col border-r border-slate-200 bg-white">
-          <div className="shrink-0 border-b border-slate-200 p-5">
-            <h1 className="text-3xl font-black text-slate-900">My messages</h1>
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 overflow-hidden rounded-2xl bg-white shadow-xl lg:grid lg:h-full lg:grid-cols-[390px_1fr] lg:gap-0 lg:rounded-[1.7rem]">
+        <aside
+          className={`${chatListOrderClass} flex max-h-[70vh] min-h-[360px] min-w-0 flex-col border-b border-slate-200 bg-white lg:order-none lg:h-full lg:max-h-none lg:min-h-0 lg:border-b-0 lg:border-r`}
+        >
+          <div className="shrink-0 border-b border-slate-200 p-4 sm:p-5">
+            <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">My messages</h1>
 
             <div className="relative mt-4">
               <Search
@@ -1070,7 +1074,7 @@ function Chat() {
             ))}
           </div>
 
-          <div className="sellify-scroll h-full min-h-0 flex-1 overflow-y-auto">
+          <div className="sellify-scroll h-full min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
             {filteredChats.length === 0 ? (
               <div className="px-5 py-12 text-center text-sm font-semibold text-slate-400">
                 No {activeTab === "all" ? "messages" : activeTab} chats.
@@ -1095,7 +1099,7 @@ function Chat() {
                 return (
                   <div
                     key={chat.id}
-                    className={`group relative flex gap-3 border-b border-slate-100 p-4 transition ${
+                    className={`group relative flex min-w-0 gap-3 border-b border-slate-100 p-3 transition sm:p-4 ${
                       active ? "bg-green-50" : "bg-white hover:bg-slate-50"
                     }`}
                   >
@@ -1137,7 +1141,7 @@ function Chat() {
                         )}
                       </div>
 
-                      <div className="min-w-0 flex-1 pr-12">
+                      <div className="min-w-0 flex-1 pr-9 sm:pr-12">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="truncate text-base font-semibold text-slate-900">
@@ -1158,7 +1162,7 @@ function Chat() {
                             ) : null}
                           </div>
 
-                          <p className="shrink-0 text-sm font-semibold text-slate-600">
+                          <p className="shrink-0 text-xs font-semibold text-slate-600 sm:text-sm">
                             {formatListDate(chat.updatedAt)}
                           </p>
                         </div>
@@ -1183,7 +1187,7 @@ function Chat() {
                       </div>
 
                       {unread > 0 && (
-                        <span className="absolute bottom-4 right-8 grid h-6 min-w-6 place-items-center rounded-full bg-green-600 px-2 text-xs font-black text-white">
+                        <span className="absolute bottom-4 right-6 grid h-6 min-w-6 place-items-center rounded-full bg-green-600 px-2 text-xs font-black text-white sm:right-8">
                           {unread > 9 ? "9+" : unread}
                         </span>
                       )}
@@ -1233,9 +1237,13 @@ function Chat() {
           </div>
         </aside>
 
-        <section className="flex h-full min-h-0 flex-col bg-[#eaf2f6]">
+        <section
+          className={`${messagePaneOrderClass} flex min-w-0 flex-col bg-[#eaf2f6] ${
+            activeChat ? "min-h-[680px]" : "min-h-[280px]"
+          } lg:order-none lg:h-full lg:min-h-0`}
+        >
           {!activeChat ? (
-            <div className="flex h-full items-center justify-center text-center">
+            <div className="flex min-h-[280px] items-center justify-center px-4 text-center lg:h-full lg:min-h-0">
               <p className="text-lg font-semibold text-slate-600">
                 Select a chat to start messaging
               </p>
@@ -1243,8 +1251,8 @@ function Chat() {
           ) : (
             <>
               <div className="shrink-0 bg-white">
-                <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-                  <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                  <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                     <div className="relative">
                       <img
                         src={
@@ -1254,7 +1262,7 @@ function Chat() {
                           }`
                         }
                         alt=""
-                        className="h-12 w-12 rounded-full object-cover"
+                        className="h-11 w-11 rounded-full object-cover sm:h-12 sm:w-12"
                       />
 
                       {otherUser.online && (
@@ -1262,8 +1270,8 @@ function Chat() {
                       )}
                     </div>
 
-                    <div>
-                      <h2 className="text-xl font-black text-slate-900">
+                    <div className="min-w-0">
+                      <h2 className="truncate text-lg font-black text-slate-900 sm:text-xl">
                         {otherUser.name || (isSeller ? "Buyer" : "Seller")}
                       </h2>
 
@@ -1286,14 +1294,16 @@ function Chat() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     {!isSeller && (
                       <button
                         onClick={() => setShowContact(!showContact)}
-                        className="flex items-center gap-2 rounded-xl border-2 border-green-600 px-5 py-3 font-black text-green-600 hover:bg-green-50"
+                        className="flex w-full min-w-0 items-center justify-center gap-2 rounded-xl border-2 border-green-600 px-4 py-2.5 font-black text-green-600 hover:bg-green-50 sm:w-auto sm:px-5 sm:py-3"
                       >
                         <Phone size={18} />
-                        {showContact ? contactInfo : "Show contact"}
+                        <span className="min-w-0 break-all">
+                          {showContact ? contactInfo : "Show contact"}
+                        </span>
                       </button>
                     )}
                   </div>
@@ -1301,7 +1311,7 @@ function Chat() {
 
                 <Link
                   to={`/product/${activeChat.productId}`}
-                  className="flex items-center gap-4 border-b border-slate-100 px-6 py-3 hover:bg-slate-50"
+                  className="flex min-w-0 items-center gap-3 border-b border-slate-100 px-4 py-3 hover:bg-slate-50 sm:gap-4 sm:px-6"
                 >
                   <div className="relative">
                     <img
@@ -1322,15 +1332,15 @@ function Chat() {
                     )}
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
                       {chatClosed && (
                         <span className="rounded bg-slate-200 px-2 py-1 text-xs font-black uppercase text-slate-500">
                           CLOSED
                         </span>
                       )}
 
-                      <p className="font-black text-slate-900">
+                      <p className="min-w-0 truncate font-black text-slate-900">
                         {activeChat.productTitle}
                       </p>
                     </div>
@@ -1348,9 +1358,9 @@ function Chat() {
                 </Link>
               </div>
 
-              <div className="sellify-scroll min-h-0 flex-1 overflow-y-auto p-6">
+              <div className="sellify-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6">
                 <div className="mb-8 flex justify-center">
-                  <div className="rounded-full border border-orange-300 bg-orange-50 px-6 py-3 text-sm font-semibold text-orange-700">
+                  <div className="max-w-full rounded-full border border-orange-300 bg-orange-50 px-4 py-3 text-center text-sm font-semibold text-orange-700 sm:px-6">
                     ⚠️ Avoid paying in advance! Even for delivery
                   </div>
                 </div>
@@ -1400,13 +1410,13 @@ function Chat() {
                             renderOfferMessage(msg, isMe)
                           ) : (
                             <div
-                              className={`max-w-[360px] rounded-2xl px-4 py-3 text-sm shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
+                              className={`max-w-[85%] break-words rounded-2xl px-4 py-3 text-sm shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md sm:max-w-[360px] ${
                                 isMe
                                   ? "rounded-br-md bg-green-200 text-slate-900"
                                   : "rounded-bl-md bg-white text-slate-900"
                               }`}
                             >
-                              <p>{msg.text}</p>
+                              <p className="whitespace-pre-wrap">{msg.text}</p>
                               {renderMessageMeta(msg, isMe)}
                             </div>
                           )}
@@ -1419,7 +1429,7 @@ function Chat() {
                 </div>
               </div>
 
-              <div className="shrink-0 border-t border-slate-200 bg-white px-5 py-3">
+              <div className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 sm:px-5">
                 {chatClosed ? (
                   <div className="rounded-2xl bg-slate-100 py-4 text-center font-black text-slate-500">
                     Chat closed because this advert has been sold.
@@ -1502,7 +1512,7 @@ function Chat() {
                       <input
                         type="text"
                         placeholder="Type a message"
-                        className="flex-1 rounded-full border border-slate-300 px-5 py-3 text-sm outline-none focus:border-green-500"
+                        className="min-w-0 flex-1 rounded-full border border-slate-300 px-4 py-3 text-sm outline-none focus:border-green-500 sm:px-5"
                         value={message}
                         onChange={(e) => handleTyping(e.target.value)}
                         onBlur={stopTyping}

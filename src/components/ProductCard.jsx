@@ -123,7 +123,7 @@ function ProductCard({ product }) {
   }
 
   return (
-    <Link to={`/product/${product.id}`} className="group block h-full">
+    <Link to={`/product/${product.id}`} className="group block h-full min-w-0">
       <article className="flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-100">
         <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
           <img

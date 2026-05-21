@@ -214,10 +214,10 @@ function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 px-4 py-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 lg:flex-row">
         <div className="w-full space-y-5 lg:w-80">
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-7 text-center shadow-sm">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 text-center shadow-sm sm:rounded-[2rem] sm:p-7">
             <div className="relative inline-block">
               <img
                 src={avatarUrl}
@@ -249,7 +249,9 @@ function Profile() {
               <p className="mt-1 font-semibold text-green-600">@{username}</p>
             )}
 
-            <p className="mt-2 text-sm text-slate-400">{currentUser.email}</p>
+            <p className="mt-2 break-all text-sm text-slate-400">
+              {currentUser.email}
+            </p>
 
             {phone && <p className="mt-2 text-sm text-slate-500">📞 {phone}</p>}
 
@@ -276,7 +278,7 @@ function Profile() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-5">
             <div className="space-y-2">
               <Link
                 to="/dashboard"
@@ -309,8 +311,8 @@ function Profile() {
           </div>
         </div>
 
-        <div className="flex-1 space-y-6">
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
+        <div className="min-w-0 flex-1 space-y-6">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-7">
             <h3 className="text-2xl font-black text-slate-900">
               Edit Profile
             </h3>
@@ -358,7 +360,7 @@ function Profile() {
                         e.target.value.replace(/\s/g, "").toLowerCase()
                       )
                     }
-                    className="w-full rounded-2xl border border-slate-300 py-4 pl-10 pr-5 outline-none transition focus:border-green-500"
+                    className="min-w-0 w-full rounded-2xl border border-slate-300 py-4 pl-10 pr-5 outline-none transition focus:border-green-500"
                     required
                   />
                 </div>
@@ -382,8 +384,8 @@ function Profile() {
             </form>
           </div>
 
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
-            <div className="mb-5 flex items-center justify-between">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-7">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-2xl font-black text-slate-900">
                 Active Listings
               </h3>
@@ -433,8 +435,8 @@ function Profile() {
           </div>
 
           {soldListings.length > 0 && (
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
-              <div className="mb-5 flex items-center justify-between">
+            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-7">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-2xl font-black text-slate-900">
                   Recently Sold
                 </h3>
@@ -503,7 +505,7 @@ function InputField({ label, value, onChange, disabled = false }) {
         value={value}
         onChange={onChange}
         disabled={disabled}
-        className={`w-full rounded-2xl border border-slate-300 px-5 py-4 outline-none transition ${
+        className={`min-w-0 w-full rounded-2xl border border-slate-300 px-5 py-4 outline-none transition ${
           disabled ? "bg-slate-100" : "focus:border-green-500"
         }`}
       />

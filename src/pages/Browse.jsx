@@ -244,7 +244,7 @@ function BrowseListings({ initialSearch, initialCategory }) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8">
+    <main className="min-h-screen overflow-x-hidden bg-slate-50 px-4 py-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
@@ -252,7 +252,7 @@ function BrowseListings({ initialSearch, initialCategory }) {
               Marketplace
             </p>
 
-            <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
               Browse Listings
             </h1>
 
@@ -269,7 +269,7 @@ function BrowseListings({ initialSearch, initialCategory }) {
           </div>
         </div>
 
-        <section className="mb-6 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="mb-6 rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm sm:rounded-[2rem] sm:p-4">
           <div className="grid gap-3 lg:grid-cols-[1fr_210px_190px]">
             <label className="relative block">
               <Search
@@ -320,7 +320,7 @@ function BrowseListings({ initialSearch, initialCategory }) {
             </select>
           </div>
 
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          <div className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-1">
             {BROWSE_CATEGORIES.map((cat) => {
               const isActive = category === cat;
               const count = categoryCounts[cat] || 0;
@@ -399,7 +399,7 @@ function BrowseListings({ initialSearch, initialCategory }) {
               type="number"
               min="0"
               placeholder="Min price"
-              className="h-12 rounded-2xl border border-slate-300 px-4 font-semibold outline-none transition focus:border-green-500"
+              className="h-12 w-full rounded-2xl border border-slate-300 px-4 font-semibold outline-none transition focus:border-green-500"
               value={minPrice}
               onChange={(event) => {
                 setMinPrice(event.target.value);
@@ -411,7 +411,7 @@ function BrowseListings({ initialSearch, initialCategory }) {
               type="number"
               min="0"
               placeholder="Max price"
-              className="h-12 rounded-2xl border border-slate-300 px-4 font-semibold outline-none transition focus:border-green-500"
+              className="h-12 w-full rounded-2xl border border-slate-300 px-4 font-semibold outline-none transition focus:border-green-500"
               value={maxPrice}
               onChange={(event) => {
                 setMaxPrice(event.target.value);
@@ -423,7 +423,7 @@ function BrowseListings({ initialSearch, initialCategory }) {
               type="button"
               onClick={clearFilters}
               disabled={!hasFilters}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 font-black text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 font-black text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 xl:w-auto"
             >
               <X size={17} />
               Clear
@@ -480,7 +480,7 @@ function BrowseListings({ initialSearch, initialCategory }) {
                 Previous
               </button>
 
-              <div className="flex justify-center gap-2">
+              <div className="flex max-w-full justify-center gap-2 overflow-x-auto px-1">
                 {Array.from({ length: totalPages }, (_, index) => index + 1)
                   .filter(
                     (pageNumber) =>

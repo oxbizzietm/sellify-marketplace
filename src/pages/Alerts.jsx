@@ -104,11 +104,11 @@ function Alerts() {
   const hasUnread = alerts.some((item) => !item.read);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10">
+    <main className="min-h-screen overflow-x-hidden bg-slate-50 px-4 py-10">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-8 flex items-center justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black text-slate-950">
+            <h1 className="text-3xl font-black text-slate-950 sm:text-4xl">
               Alerts
             </h1>
           </div>
@@ -117,7 +117,7 @@ function Alerts() {
             <button
               onClick={markAllAsRead}
               disabled={!hasUnread || markingAll}
-              className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 font-black text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-3 font-black text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
             >
               {markingAll ? (
                 <Loader2 size={18} className="animate-spin" />
@@ -173,7 +173,7 @@ function Alerts() {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
-                      <h2 className="font-black text-slate-900">
+                      <h2 className="break-words font-black text-slate-900">
                         {alert.title || "New alert"}
                       </h2>
 
@@ -184,7 +184,7 @@ function Alerts() {
                       )}
                     </div>
 
-                    <p className="mt-1 text-sm font-semibold text-slate-600">
+                    <p className="mt-1 break-words text-sm font-semibold text-slate-600">
                       {alert.message}
                     </p>
 

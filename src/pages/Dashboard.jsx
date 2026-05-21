@@ -766,7 +766,7 @@ function Dashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8">
+    <main className="min-h-screen overflow-x-hidden bg-slate-50 px-4 py-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
@@ -774,23 +774,23 @@ function Dashboard() {
               Seller dashboard
             </p>
 
-            <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
               Manage your Sellify store
             </h1>
 
-            <p className="mt-2 text-slate-500">
+            <p className="mt-2 break-all text-slate-500">
               Logged in as {currentUser.email}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex w-full flex-wrap gap-3 md:w-auto">
             <button
               type="button"
               onClick={handleDeleteActiveListings}
               disabled={
                 deletingActiveListings || loading || activeListings.length === 0
               }
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               {deletingActiveListings ? (
                 <Loader2 size={18} className="animate-spin" />
@@ -802,7 +802,7 @@ function Dashboard() {
 
             <Link
               to="/sell"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 px-5 py-3 font-black text-white transition hover:bg-green-700"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-green-600 px-5 py-3 font-black text-white transition hover:bg-green-700 sm:w-auto"
             >
               <Plus size={18} />
               New Listing
@@ -860,11 +860,11 @@ function Dashboard() {
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-[180px_240px]">
+              <div className="grid w-full gap-3 sm:grid-cols-[180px_240px] md:w-auto">
                 <select
                   value={statusFilter}
                   onChange={(event) => setStatusFilter(event.target.value)}
-                  className="h-12 rounded-2xl border border-slate-300 px-4 font-bold text-slate-700 outline-none focus:border-green-500"
+                  className="h-12 w-full rounded-2xl border border-slate-300 px-4 font-bold text-slate-700 outline-none focus:border-green-500"
                 >
                   {FILTER_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -878,7 +878,7 @@ function Dashboard() {
                   placeholder="Search listings"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  className="h-12 rounded-2xl border border-slate-300 px-4 font-semibold outline-none focus:border-green-500"
+                  className="h-12 w-full rounded-2xl border border-slate-300 px-4 font-semibold outline-none focus:border-green-500"
                 />
               </div>
             </div>
@@ -921,7 +921,7 @@ function Dashboard() {
             )}
           </div>
 
-          <aside className="space-y-6">
+          <aside className="min-w-0 space-y-6">
             <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-2xl font-black text-slate-950">
                 Order overview
@@ -1028,7 +1028,7 @@ function StatCard({ icon: Icon, label, value, helper }) {
             {label}
           </p>
 
-          <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
+          <p className="mt-3 break-words text-3xl font-black text-slate-950">{value}</p>
 
           <p className="mt-2 text-sm font-semibold text-slate-500">{helper}</p>
         </div>
@@ -1149,7 +1149,7 @@ function ListingRow({
                 +
               </button>
 
-              <div className="ml-auto flex flex-wrap gap-2">
+              <div className="flex w-full flex-wrap gap-2 md:ml-auto md:w-auto">
                 <Link
                   to={`/product/${product.id}`}
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-700 transition hover:bg-slate-200"
@@ -1192,7 +1192,7 @@ function ListingRow({
 function EditListingModal({ form, saving, onChange, onClose, onSubmit }) {
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto bg-slate-950/50 px-4 py-8 backdrop-blur-sm">
-      <div className="mx-auto max-w-4xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+        <div className="mx-auto max-w-4xl overflow-hidden rounded-[1.5rem] bg-white shadow-2xl sm:rounded-[2rem]">
         <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-5">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-green-600">
@@ -1213,7 +1213,7 @@ function EditListingModal({ form, saving, onChange, onClose, onSubmit }) {
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="px-6 py-6">
+        <form onSubmit={onSubmit} className="px-4 py-5 sm:px-6 sm:py-6">
           <div className="grid gap-4 md:grid-cols-2">
             <Field
               label="Title"

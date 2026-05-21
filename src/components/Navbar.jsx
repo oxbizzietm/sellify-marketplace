@@ -142,19 +142,19 @@ function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-4">
-        <Link to="/" className="flex shrink-0 items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-green-600 text-xl font-black text-white shadow-sm">
+    <header className="sticky top-0 z-50 overflow-x-hidden border-b border-slate-200 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-3 py-3 sm:px-4 lg:flex-nowrap lg:gap-4 lg:px-5 lg:py-4">
+        <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-green-600 text-lg font-black text-white shadow-sm sm:h-11 sm:w-11 sm:rounded-2xl sm:text-xl">
             S
           </div>
 
-          <div className="leading-none">
-            <div className="text-2xl font-black tracking-tight text-black">
+          <div className="min-w-0 leading-none">
+            <div className="text-xl font-black tracking-tight text-black sm:text-2xl">
               ellify
             </div>
 
-            <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400">
+            <p className="mt-1 hidden text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 sm:block">
               Marketplace
             </p>
           </div>
@@ -190,51 +190,54 @@ function Navbar() {
           )}
         </div>
 
-        <form onSubmit={handleSearch} className="hidden flex-1 lg:block">
+        <form
+          onSubmit={handleSearch}
+          className="order-3 w-full flex-none lg:order-none lg:block lg:flex-1"
+        >
           <div className="flex overflow-hidden rounded-2xl border-2 border-slate-300 bg-white transition focus-within:border-green-500">
             <input
               name="search"
               type="text"
               placeholder="Search for anything..."
-              className="w-full bg-transparent px-5 py-3 outline-none"
+              className="min-w-0 w-full bg-transparent px-4 py-2.5 outline-none sm:px-5 sm:py-3"
             />
 
             <button
               type="submit"
-              className="flex items-center gap-2 bg-green-600 px-6 font-bold text-white transition hover:bg-green-700"
+              className="flex shrink-0 items-center gap-2 bg-green-600 px-4 font-bold text-white transition hover:bg-green-700 sm:px-6"
             >
               <Search size={18} />
-              Search
+              <span className="hidden sm:inline">Search</span>
             </button>
           </div>
         </form>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2 lg:flex-nowrap lg:gap-3">
           <Link
             to="/sell"
-            className="hidden rounded-2xl bg-green-600 px-6 py-3 font-black text-white transition hover:bg-green-700 lg:block"
+            className="shrink-0 rounded-xl bg-green-600 px-3 py-2 text-sm font-black text-white transition hover:bg-green-700 sm:px-4 lg:rounded-2xl lg:px-6 lg:py-3 lg:text-base"
           >
             Sell
           </Link>
 
           <Link
             to={currentUser ? "/favorites" : "/login"}
-            className="group flex flex-col items-center"
+            className="group flex shrink-0 flex-col items-center"
           >
-            <div className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-red-50 hover:text-red-500">
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-red-50 hover:text-red-500 sm:h-11 sm:w-11">
               <Heart size={20} />
             </div>
 
-            <span className="mt-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 transition group-hover:text-red-500">
+            <span className="mt-1 hidden text-[11px] font-bold uppercase tracking-wide text-slate-500 transition group-hover:text-red-500 sm:block">
               Favourites
             </span>
           </Link>
 
           <Link
             to={currentUser ? "/chat" : "/login"}
-            className="group relative flex flex-col items-center"
+            className="group relative flex shrink-0 flex-col items-center"
           >
-            <div className="relative grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-red-50 hover:text-red-500">
+            <div className="relative grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-red-50 hover:text-red-500 sm:h-11 sm:w-11">
               <MessageCircle size={20} />
 
               {currentUser && chatCount > 0 && (
@@ -244,16 +247,16 @@ function Navbar() {
               )}
             </div>
 
-            <span className="mt-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 transition group-hover:text-red-500">
+            <span className="mt-1 hidden text-[11px] font-bold uppercase tracking-wide text-slate-500 transition group-hover:text-red-500 sm:block">
               Chat
             </span>
           </Link>
 
           <Link
             to={currentUser ? "/alerts" : "/login"}
-            className="group relative flex flex-col items-center"
+            className="group relative flex shrink-0 flex-col items-center"
           >
-            <div className="relative grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-red-50 hover:text-red-500">
+            <div className="relative grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-red-50 hover:text-red-500 sm:h-11 sm:w-11">
               <Bell size={20} />
 
               {currentUser && alertCount > 0 && (
@@ -263,26 +266,26 @@ function Navbar() {
               )}
             </div>
 
-            <span className="mt-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 transition group-hover:text-red-500">
+            <span className="mt-1 hidden text-[11px] font-bold uppercase tracking-wide text-slate-500 transition group-hover:text-red-500 sm:block">
               Alerts
             </span>
           </Link>
 
           {currentUser ? (
-            <Link to="/profile" className="group flex flex-col items-center">
+            <Link to="/profile" className="group flex shrink-0 flex-col items-center">
               {profilePhoto ? (
                 <img
                   src={profilePhoto}
                   alt="profile"
-                  className="h-12 w-12 rounded-full border-2 border-slate-200 object-cover transition group-hover:border-green-500"
+                  className="h-10 w-10 rounded-full border-2 border-slate-200 object-cover transition group-hover:border-green-500 sm:h-12 sm:w-12"
                 />
               ) : (
-                <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-slate-200 bg-red-500 text-lg font-black text-white transition group-hover:border-green-500">
+                <div className="grid h-10 w-10 place-items-center rounded-full border-2 border-slate-200 bg-red-500 text-base font-black text-white transition group-hover:border-green-500 sm:h-12 sm:w-12 sm:text-lg">
                   {avatarInitial}
                 </div>
               )}
 
-              <span className="mt-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 transition group-hover:text-green-600">
+              <span className="mt-1 hidden text-[11px] font-bold uppercase tracking-wide text-slate-500 transition group-hover:text-green-600 sm:block">
                 Profile
               </span>
             </Link>

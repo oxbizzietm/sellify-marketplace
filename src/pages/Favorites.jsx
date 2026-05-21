@@ -60,7 +60,7 @@ function Favorites() {
 
   if (!currentUser) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center overflow-x-hidden bg-slate-50 px-4 text-center">
         <div className="rounded-full bg-red-100 p-5">
           <Heart size={40} className="text-red-500" />
         </div>
@@ -92,7 +92,7 @@ function Favorites() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8">
+    <main className="min-h-screen overflow-x-hidden bg-slate-50 px-4 py-8">
       <div className="mx-auto max-w-7xl">
 
         {/* HEADER */}
@@ -102,7 +102,7 @@ function Favorites() {
               Your collection
             </p>
 
-            <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
               Favourite listings
             </h1>
 

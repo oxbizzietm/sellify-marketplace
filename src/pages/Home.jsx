@@ -157,13 +157,13 @@ function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
-      <section className="px-6 pt-6">
-        <div className="relative min-h-[430px] overflow-hidden rounded-[2rem] bg-gradient-to-r from-green-50 via-white to-green-100 shadow-sm">
+    <main className="min-h-screen overflow-x-hidden bg-white">
+      <section className="px-4 pt-4 sm:px-6 sm:pt-6">
+        <div className="relative min-h-[390px] overflow-hidden rounded-[1.5rem] bg-gradient-to-r from-green-50 via-white to-green-100 shadow-sm sm:min-h-[430px] sm:rounded-[2rem]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_30%,rgba(22,163,74,0.18),transparent_35%)]" />
 
-          <div className="relative z-10 grid min-h-[430px] grid-cols-1 lg:grid-cols-2">
-            <div className="flex flex-col justify-center px-8 py-12 transition-all duration-700 ease-out lg:px-10">
+          <div className="relative z-10 grid min-h-[390px] grid-cols-1 sm:min-h-[430px] lg:grid-cols-2">
+            <div className="flex min-w-0 flex-col justify-center px-5 py-10 transition-all duration-700 ease-out sm:px-8 sm:py-12 lg:px-10">
               <span
                 key={slide.tag}
                 className="mb-5 w-fit rounded-xl bg-green-100 px-4 py-2 text-sm font-black text-green-700 animate-[fadeIn_0.7s_ease-out]"
@@ -173,7 +173,7 @@ function Home() {
 
               <h1
                 key={slide.title}
-                className="max-w-2xl text-5xl font-black leading-tight tracking-tight text-black animate-[slideUp_0.7s_ease-out] lg:text-6xl"
+                className="max-w-2xl text-4xl font-black leading-tight tracking-tight text-black animate-[slideUp_0.7s_ease-out] sm:text-5xl lg:text-6xl"
               >
                 {renderTitle(slide.title, slide.highlight)}
               </h1>
@@ -188,14 +188,14 @@ function Home() {
               <div className="mt-8 flex flex-wrap gap-4">
                 <button
                   onClick={() => navigate("/browse")}
-                  className="rounded-xl bg-green-600 px-8 py-4 text-base font-black text-white shadow-sm transition hover:bg-green-700"
+                className="w-full rounded-xl bg-green-600 px-8 py-4 text-base font-black text-white shadow-sm transition hover:bg-green-700 sm:w-auto"
                 >
                   Browse Products
                 </button>
 
                 <button
                   onClick={() => navigate("/sell")}
-                  className="rounded-xl border border-green-600 bg-white px-8 py-4 text-base font-black text-green-700 shadow-sm transition hover:bg-green-50"
+                className="w-full rounded-xl border border-green-600 bg-white px-8 py-4 text-base font-black text-green-700 shadow-sm transition hover:bg-green-50 sm:w-auto"
                 >
                   Sell an Item
                 </button>
@@ -271,8 +271,8 @@ function Home() {
         `}
       </style>
 
-      <section className="px-6 py-8">
-        <div className="mb-5 flex items-center justify-between">
+      <section className="px-4 py-8 sm:px-6">
+        <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="text-2xl font-black text-black">Featured Listings</h2>
 
           <button
