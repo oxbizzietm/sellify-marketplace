@@ -21,14 +21,51 @@ export function getUnitsSold(product) {
   return product?.sold === true ? 1 : 0;
 }
 
+export function getFinalSaleUnitPrice(product) {
+  const finalPrice = Number(
+    product?.finalSoldPrice ??
+      product?.finalSaleUnitPrice ??
+      product?.soldPrice ??
+      product?.acceptedOfferAmount
+  );
+
+  if (Number.isFinite(finalPrice) && finalPrice > 0) {
+    return finalPrice;
+  }
+
+  const lastSaleTotal = Number(product?.lastSaleTotal);
+  const lastSoldQuantity = Number(product?.lastSoldQuantity);
+
+  if (
+    Number.isFinite(lastSaleTotal) &&
+    Number.isFinite(lastSoldQuantity) &&
+    lastSoldQuantity > 0
+  ) {
+    return lastSaleTotal / lastSoldQuantity;
+  }
+
+  return Number(product?.price) || 0;
+}
+
 export function getSalesTotal(product) {
+  const unitsSold = getUnitsSold(product);
+  const hasFinalSalePrice =
+    product?.finalSoldPrice !== undefined ||
+    product?.finalSaleUnitPrice !== undefined ||
+    product?.soldPrice !== undefined ||
+    product?.acceptedOfferAmount !== undefined;
+
+  if (hasFinalSalePrice && unitsSold > 0) {
+    return Math.max(0, getFinalSaleUnitPrice(product) * unitsSold);
+  }
+
   const salesTotal = Number(product?.salesTotal ?? product?.saleTotal);
 
   if (Number.isFinite(salesTotal)) {
     return Math.max(0, salesTotal);
   }
 
-  return getUnitsSold(product) * (Number(product?.price) || 0);
+  return unitsSold * getFinalSaleUnitPrice(product);
 }
 
 export function isPublicListing(product) {

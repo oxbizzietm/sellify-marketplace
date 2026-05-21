@@ -159,10 +159,41 @@ function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-white">
       <section className="px-4 pt-4 sm:px-6 sm:pt-6">
-        <div className="relative min-h-[390px] overflow-hidden rounded-[1.5rem] bg-gradient-to-r from-green-50 via-white to-green-100 shadow-sm sm:min-h-[430px] sm:rounded-[2rem]">
+        <div className="relative overflow-hidden rounded-[1.5rem] bg-gradient-to-r from-green-50 via-white to-green-100 shadow-sm sm:rounded-[2rem] lg:min-h-[430px]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_30%,rgba(22,163,74,0.18),transparent_35%)]" />
 
-          <div className="relative z-10 grid min-h-[390px] grid-cols-1 sm:min-h-[430px] lg:grid-cols-2">
+          <div className="relative z-10 grid grid-cols-1 lg:min-h-[430px] lg:grid-cols-2">
+            <div className="relative h-52 overflow-hidden sm:h-64 lg:hidden">
+              {heroSlides.map((item, index) => (
+                <img
+                  key={`mobile-${item.image}`}
+                  src={item.image}
+                  alt={item.tag}
+                  className={`absolute inset-0 h-full w-full object-cover object-center transition-[opacity,transform] duration-[1400ms] ease-in-out ${
+                    activeSlide === index
+                      ? "opacity-100 scale-100"
+                      : "opacity-0 scale-110"
+                  }`}
+                />
+              ))}
+
+              <div className="absolute inset-0 bg-gradient-to-t from-green-50 via-white/20 to-transparent" />
+
+              <button
+                onClick={prevSlide}
+                className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-gray-900 shadow-lg backdrop-blur transition hover:bg-white"
+              >
+                <ChevronLeft size={22} />
+              </button>
+
+              <button
+                onClick={nextSlide}
+                className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-gray-900 shadow-lg backdrop-blur transition hover:bg-white"
+              >
+                <ChevronRight size={22} />
+              </button>
+            </div>
+
             <div className="flex min-w-0 flex-col justify-center px-5 py-10 transition-all duration-700 ease-out sm:px-8 sm:py-12 lg:px-10">
               <span
                 key={slide.tag}
@@ -188,14 +219,14 @@ function Home() {
               <div className="mt-8 flex flex-wrap gap-4">
                 <button
                   onClick={() => navigate("/browse")}
-                className="w-full rounded-xl bg-green-600 px-8 py-4 text-base font-black text-white shadow-sm transition hover:bg-green-700 sm:w-auto"
+                  className="w-full rounded-xl bg-green-600 px-8 py-4 text-base font-black text-white shadow-sm transition hover:bg-green-700 sm:w-auto"
                 >
                   Browse Products
                 </button>
 
                 <button
                   onClick={() => navigate("/sell")}
-                className="w-full rounded-xl border border-green-600 bg-white px-8 py-4 text-base font-black text-green-700 shadow-sm transition hover:bg-green-50 sm:w-auto"
+                  className="w-full rounded-xl border border-green-600 bg-white px-8 py-4 text-base font-black text-green-700 shadow-sm transition hover:bg-green-50 sm:w-auto"
                 >
                   Sell an Item
                 </button>
@@ -284,11 +315,11 @@ function Home() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
             {[1, 2, 3, 4, 5].map((item) => (
               <div
                 key={item}
-                className="h-80 animate-pulse rounded-3xl bg-gray-100"
+                className="h-64 animate-pulse rounded-2xl bg-gray-100 sm:h-80 sm:rounded-3xl"
               />
             ))}
           </div>
@@ -310,9 +341,9 @@ function Home() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} compact />
             ))}
           </div>
         )}

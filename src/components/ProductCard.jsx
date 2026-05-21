@@ -40,7 +40,7 @@ function getSpecChips(product) {
     .slice(0, 3);
 }
 
-function ProductCard({ product }) {
+function ProductCard({ product, compact = false }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
@@ -176,18 +176,30 @@ function ProductCard({ product }) {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col p-4">
-          <h3 className="line-clamp-2 min-h-[3.5rem] text-lg font-black leading-7 text-slate-950 transition group-hover:text-emerald-700">
+        <div className={`flex flex-1 flex-col ${compact ? "p-3 sm:p-4" : "p-4"}`}>
+          <h3
+            className={
+              compact
+                ? "line-clamp-2 min-h-[2.5rem] text-sm font-black leading-5 text-slate-950 transition group-hover:text-emerald-700 sm:min-h-[3.5rem] sm:text-lg sm:leading-7"
+                : "line-clamp-2 min-h-[3.5rem] text-lg font-black leading-7 text-slate-950 transition group-hover:text-emerald-700"
+            }
+          >
             {product.title || "Untitled Product"}
           </h3>
 
-          <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">
+          <p
+            className={
+              compact
+                ? "mt-1 hidden min-h-10 text-sm leading-5 text-slate-500 sm:line-clamp-2"
+                : "mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500"
+            }
+          >
             {product.description ||
               "Quality item listed on Sellify marketplace."}
           </p>
 
           {specChips.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className={`${compact ? "mt-2 hidden sm:flex" : "mt-3 flex"} flex-wrap gap-2`}>
               {specChips.map((chip) => (
                 <span
                   key={chip}
@@ -200,11 +212,23 @@ function ProductCard({ product }) {
           )}
 
           <div className="mt-auto">
-            <p className="mt-4 text-2xl font-black tracking-tight text-emerald-600">
+            <p
+              className={
+                compact
+                  ? "mt-3 text-lg font-black tracking-tight text-emerald-600 sm:mt-4 sm:text-2xl"
+                  : "mt-4 text-2xl font-black tracking-tight text-emerald-600"
+              }
+            >
               {formatListingPrice(product.price)}
             </p>
 
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+            <div
+              className={
+                compact
+                  ? "mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 sm:mt-4 sm:gap-3"
+                  : "mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3"
+              }
+            >
               <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-500">
                 <MapPin size={14} className="shrink-0" />
                 <span className="truncate">
@@ -212,9 +236,15 @@ function ProductCard({ product }) {
                 </span>
               </span>
 
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">
+              <span
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 text-xs font-black text-emerald-700 ${
+                  compact ? "px-2 py-1 sm:px-3 sm:py-1.5" : "px-3 py-1.5"
+                }`}
+              >
                 <MessageCircle size={14} />
-                Chat
+                <span className={compact ? "hidden sm:inline" : ""}>
+                  Chat
+                </span>
               </span>
             </div>
           </div>

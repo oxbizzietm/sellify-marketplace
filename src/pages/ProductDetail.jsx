@@ -20,7 +20,9 @@ import {
 import { db } from "../firebase/firebase";
 import { useAuth } from "../context/AuthContext";
 import { getProductContactInfo } from "../utils/contact";
+import { getAcceptedOfferForListing } from "../utils/offers";
 import {
+  getFinalSaleUnitPrice,
   getListingStock,
   getSalesTotal,
   getUnitsSold,
@@ -335,7 +337,7 @@ function ProductDetail() {
     const currentStock = getListingStock(product);
     const currentUnitsSold = getUnitsSold(product);
     const currentSalesTotal = getSalesTotal(product);
-    const unitPrice = Number(product.price) || 0;
+    const baseUnitPrice = Number(product.price) || 0;
 
     if (currentStock <= 0) {
       window.alert("This listing has no stock left to mark as sold.");
@@ -364,31 +366,55 @@ function ProductDetail() {
       }
     }
 
-    const nextStock = currentStock - soldQuantity;
-    const nextUnitsSold = currentUnitsSold + soldQuantity;
-    const nextSalesTotal = currentSalesTotal + unitPrice * soldQuantity;
-    const fullySold = nextStock === 0;
-    const saleUpdate = {
-      sold: fullySold,
-      listingStatus: fullySold ? "sold" : "active",
-      stock: nextStock,
-      unitsSold: nextUnitsSold,
-      soldQuantity: nextUnitsSold,
-      salesTotal: nextSalesTotal,
-      saleTotal: nextSalesTotal,
-      lastSoldQuantity: soldQuantity,
-      lastSaleTotal: unitPrice * soldQuantity,
-      lastSoldAt: serverTimestamp(),
-      inventoryUpdatedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-
-    if (fullySold) {
-      saleUpdate.soldAt = serverTimestamp();
-    }
-
     try {
       setMarkingSold(true);
+
+      let acceptedOffer = null;
+
+      try {
+        acceptedOffer = await getAcceptedOfferForListing(db, product.id);
+      } catch (err) {
+        console.error("Accepted offer lookup error:", err);
+      }
+
+      const saleProduct = acceptedOffer
+        ? {
+            ...product,
+            acceptedOfferAmount: acceptedOffer.amount,
+            finalSaleUnitPrice: acceptedOffer.amount,
+          }
+        : product;
+      const saleUnitPrice = acceptedOffer
+        ? acceptedOffer.amount
+        : getFinalSaleUnitPrice(saleProduct) || baseUnitPrice;
+      const saleTotal = saleUnitPrice * soldQuantity;
+      const nextStock = currentStock - soldQuantity;
+      const nextUnitsSold = currentUnitsSold + soldQuantity;
+      const nextSalesTotal = currentSalesTotal + saleTotal;
+      const fullySold = nextStock === 0;
+      const saleUpdate = {
+        sold: fullySold,
+        listingStatus: fullySold ? "sold" : "active",
+        stock: nextStock,
+        unitsSold: nextUnitsSold,
+        soldQuantity: nextUnitsSold,
+        salesTotal: nextSalesTotal,
+        saleTotal: nextSalesTotal,
+        lastSoldQuantity: soldQuantity,
+        lastSaleTotal: saleTotal,
+        finalSoldPrice: saleUnitPrice,
+        finalSaleUnitPrice: saleUnitPrice,
+        acceptedOfferAmount: acceptedOffer?.amount || null,
+        acceptedOfferChatId: acceptedOffer?.chatId || null,
+        finalSaleSource: acceptedOffer ? "acceptedOffer" : "listingPrice",
+        lastSoldAt: serverTimestamp(),
+        inventoryUpdatedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      if (fullySold) {
+        saleUpdate.soldAt = serverTimestamp();
+      }
 
       await setDoc(
         doc(db, "products", product.id),
@@ -425,7 +451,12 @@ function ProductDetail() {
         salesTotal: nextSalesTotal,
         saleTotal: nextSalesTotal,
         lastSoldQuantity: soldQuantity,
-        lastSaleTotal: unitPrice * soldQuantity,
+        lastSaleTotal: saleTotal,
+        finalSoldPrice: saleUnitPrice,
+        finalSaleUnitPrice: saleUnitPrice,
+        acceptedOfferAmount: acceptedOffer?.amount || null,
+        acceptedOfferChatId: acceptedOffer?.chatId || null,
+        finalSaleSource: acceptedOffer ? "acceptedOffer" : "listingPrice",
         lastSoldAt: new Date(),
         soldAt: fullySold ? new Date() : prev.soldAt,
       }));

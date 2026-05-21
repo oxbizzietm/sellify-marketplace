@@ -32,7 +32,12 @@ import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/firebase";
 import { LISTING_CATEGORIES } from "../utils/categories";
 import {
+  getAcceptedOfferForListing,
+  getAcceptedOfferFromChats,
+} from "../utils/offers";
+import {
   formatListingPrice,
+  getFinalSaleUnitPrice,
   getListingImage,
   getListingStatus,
   getListingStock,
@@ -112,6 +117,21 @@ function formatDate(value) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(time));
+}
+
+function applyAcceptedOffer(product, acceptedOffer) {
+  if (!acceptedOffer?.amount) return product;
+
+  return {
+    ...product,
+    acceptedOfferAmount:
+      product.acceptedOfferAmount || acceptedOffer.amount,
+    finalSoldPrice: product.finalSoldPrice || acceptedOffer.amount,
+    finalSaleUnitPrice:
+      product.finalSaleUnitPrice || acceptedOffer.amount,
+    acceptedOfferChatId:
+      product.acceptedOfferChatId || acceptedOffer.chatId || "",
+  };
 }
 
 function getEditForm(product) {
@@ -232,9 +252,28 @@ function Dashboard() {
     [products]
   );
 
+  const acceptedOfferByProductId = useMemo(() => {
+    return products.reduce((offers, product) => {
+      const acceptedOffer = getAcceptedOfferFromChats(
+        sellerChats,
+        product.id
+      );
+
+      if (acceptedOffer) {
+        offers[product.id] = acceptedOffer;
+      }
+
+      return offers;
+    }, {});
+  }, [products, sellerChats]);
+
   const stats = useMemo(() => {
     const revenue = products.reduce(
-      (total, product) => total + getSalesTotal(product),
+      (total, product) =>
+        total +
+        getSalesTotal(
+          applyAcceptedOffer(product, acceptedOfferByProductId[product.id])
+        ),
       0
     );
     const unitsSold = products.reduce(
@@ -269,18 +308,22 @@ function Dashboard() {
         (product) => product.sold !== true && getListingStock(product) <= 0
       ).length,
     };
-  }, [products, sellerChats]);
+  }, [products, sellerChats, acceptedOfferByProductId]);
 
   const orderOverview = useMemo(() => {
     const soldOrders = products
       .filter((product) => getUnitsSold(product) > 0)
       .map((product) => {
+        const productWithFinalPrice = applyAcceptedOffer(
+          product,
+          acceptedOfferByProductId[product.id]
+        );
         const unitsSold = getUnitsSold(product);
 
         return {
           id: `sold-${product.id}`,
           title: product.title || "Untitled listing",
-          amount: getSalesTotal(product),
+          amount: getSalesTotal(productWithFinalPrice),
           status: `${unitsSold} unit${unitsSold === 1 ? "" : "s"} sold`,
           statusClass:
             product.sold === true
@@ -325,10 +368,10 @@ function Dashboard() {
         };
       });
 
-    return [...soldOrders, ...offerOrders]
-      .sort((a, b) => getTimeValue(b.date) - getTimeValue(a.date))
-      .slice(0, 6);
-  }, [sellerChats, products]);
+    return [...soldOrders, ...offerOrders].sort(
+      (a, b) => getTimeValue(b.date) - getTimeValue(a.date)
+    );
+  }, [sellerChats, products, acceptedOfferByProductId]);
 
   const filteredProducts = useMemo(() => {
     const searchTerm = search.trim().toLowerCase();
@@ -469,7 +512,7 @@ function Dashboard() {
     const currentStock = getListingStock(product);
     const currentUnitsSold = getUnitsSold(product);
     const currentSalesTotal = getSalesTotal(product);
-    const unitPrice = Number(product.price) || 0;
+    const baseUnitPrice = Number(product.price) || 0;
     let soldQuantity = 0;
     let nextStock =
       nextStatus === "sold" ? 0 : Math.max(0, currentStock);
@@ -509,6 +552,23 @@ function Dashboard() {
       resolvedStatus = nextSoldState ? "sold" : "active";
     }
 
+    let acceptedOffer = null;
+
+    if (soldQuantity > 0) {
+      try {
+        acceptedOffer = await getAcceptedOfferForListing(db, product.id);
+      } catch (err) {
+        console.error("Accepted offer lookup error:", err);
+      }
+    }
+
+    const saleProduct = applyAcceptedOffer(product, acceptedOffer);
+    const saleUnitPrice =
+      soldQuantity > 0
+        ? getFinalSaleUnitPrice(saleProduct) || baseUnitPrice
+        : baseUnitPrice;
+    const saleTotal = saleUnitPrice * soldQuantity;
+
     const updateData = {
       listingStatus: resolvedStatus,
       sold: nextSoldState,
@@ -518,14 +578,21 @@ function Dashboard() {
 
     if (soldQuantity > 0) {
       const nextUnitsSold = currentUnitsSold + soldQuantity;
-      const nextSalesTotal = currentSalesTotal + unitPrice * soldQuantity;
+      const nextSalesTotal = currentSalesTotal + saleTotal;
 
       updateData.unitsSold = nextUnitsSold;
       updateData.soldQuantity = nextUnitsSold;
       updateData.salesTotal = nextSalesTotal;
       updateData.saleTotal = nextSalesTotal;
       updateData.lastSoldQuantity = soldQuantity;
-      updateData.lastSaleTotal = unitPrice * soldQuantity;
+      updateData.lastSaleTotal = saleTotal;
+      updateData.finalSoldPrice = saleUnitPrice;
+      updateData.finalSaleUnitPrice = saleUnitPrice;
+      updateData.acceptedOfferAmount = acceptedOffer?.amount || null;
+      updateData.acceptedOfferChatId = acceptedOffer?.chatId || null;
+      updateData.finalSaleSource = acceptedOffer
+        ? "acceptedOffer"
+        : "listingPrice";
       updateData.lastSoldAt = serverTimestamp();
       updateData.inventoryUpdatedAt = serverTimestamp();
     }
@@ -555,10 +622,17 @@ function Dashboard() {
           ? {
               unitsSold: currentUnitsSold + soldQuantity,
               soldQuantity: currentUnitsSold + soldQuantity,
-              salesTotal: currentSalesTotal + unitPrice * soldQuantity,
-              saleTotal: currentSalesTotal + unitPrice * soldQuantity,
+              salesTotal: currentSalesTotal + saleTotal,
+              saleTotal: currentSalesTotal + saleTotal,
               lastSoldQuantity: soldQuantity,
-              lastSaleTotal: unitPrice * soldQuantity,
+              lastSaleTotal: saleTotal,
+              finalSoldPrice: saleUnitPrice,
+              finalSaleUnitPrice: saleUnitPrice,
+              acceptedOfferAmount: acceptedOffer?.amount || null,
+              acceptedOfferChatId: acceptedOffer?.chatId || null,
+              finalSaleSource: acceptedOffer
+                ? "acceptedOffer"
+                : "listingPrice",
               lastSoldAt: new Date(),
               inventoryUpdatedAt: new Date(),
             }
@@ -668,6 +742,32 @@ function Dashboard() {
       resolvedStatus = nextSoldState ? "sold" : "active";
     }
 
+    let acceptedOffer = null;
+
+    if (soldQuantity > 0) {
+      try {
+        acceptedOffer = await getAcceptedOfferForListing(
+          db,
+          editingProduct.id
+        );
+      } catch (err) {
+        console.error("Accepted offer lookup error:", err);
+      }
+    }
+
+    const saleProduct = applyAcceptedOffer(
+      {
+        ...editingProduct,
+        price: unitPrice,
+      },
+      acceptedOffer
+    );
+    const saleUnitPrice =
+      soldQuantity > 0
+        ? getFinalSaleUnitPrice(saleProduct) || unitPrice
+        : unitPrice;
+    const saleTotal = saleUnitPrice * soldQuantity;
+
     const updateData = {
       title: editForm.title.trim(),
       price: unitPrice,
@@ -698,14 +798,21 @@ function Dashboard() {
 
     if (soldQuantity > 0) {
       const nextUnitsSold = currentUnitsSold + soldQuantity;
-      const nextSalesTotal = currentSalesTotal + unitPrice * soldQuantity;
+      const nextSalesTotal = currentSalesTotal + saleTotal;
 
       updateData.unitsSold = nextUnitsSold;
       updateData.soldQuantity = nextUnitsSold;
       updateData.salesTotal = nextSalesTotal;
       updateData.saleTotal = nextSalesTotal;
       updateData.lastSoldQuantity = soldQuantity;
-      updateData.lastSaleTotal = unitPrice * soldQuantity;
+      updateData.lastSaleTotal = saleTotal;
+      updateData.finalSoldPrice = saleUnitPrice;
+      updateData.finalSaleUnitPrice = saleUnitPrice;
+      updateData.acceptedOfferAmount = acceptedOffer?.amount || null;
+      updateData.acceptedOfferChatId = acceptedOffer?.chatId || null;
+      updateData.finalSaleSource = acceptedOffer
+        ? "acceptedOffer"
+        : "listingPrice";
       updateData.lastSoldAt = serverTimestamp();
       updateData.inventoryUpdatedAt = serverTimestamp();
     }
@@ -735,10 +842,17 @@ function Dashboard() {
           ? {
               unitsSold: currentUnitsSold + soldQuantity,
               soldQuantity: currentUnitsSold + soldQuantity,
-              salesTotal: currentSalesTotal + unitPrice * soldQuantity,
-              saleTotal: currentSalesTotal + unitPrice * soldQuantity,
+              salesTotal: currentSalesTotal + saleTotal,
+              saleTotal: currentSalesTotal + saleTotal,
               lastSoldQuantity: soldQuantity,
-              lastSaleTotal: unitPrice * soldQuantity,
+              lastSaleTotal: saleTotal,
+              finalSoldPrice: saleUnitPrice,
+              finalSaleUnitPrice: saleUnitPrice,
+              acceptedOfferAmount: acceptedOffer?.amount || null,
+              acceptedOfferChatId: acceptedOffer?.chatId || null,
+              finalSaleSource: acceptedOffer
+                ? "acceptedOffer"
+                : "listingPrice",
               lastSoldAt: new Date(),
               inventoryUpdatedAt: new Date(),
             }
@@ -932,7 +1046,7 @@ function Dashboard() {
               </p>
 
               {loading ? (
-                <div className="mt-5 space-y-3">
+                <div className="mt-5 max-h-[420px] space-y-3 overflow-y-auto pr-1">
                   {[1, 2, 3].map((item) => (
                     <div
                       key={item}

@@ -671,6 +671,13 @@ function Chat() {
         lastSenderId: currentUser.uid,
         lastOfferAmount: messageItem.offerAmount || 0,
         lastOfferStatus: nextStatus,
+        ...(nextStatus === "accepted"
+          ? {
+              acceptedOfferAmount: messageItem.offerAmount || 0,
+              acceptedOfferMessageId: messageItem.id,
+              acceptedOfferAt: serverTimestamp(),
+            }
+          : {}),
         updatedAt: serverTimestamp(),
         [`deletedFor.${messageItem.senderId}`]: false,
         [`spamFor.${messageItem.senderId}`]: false,
