@@ -11,47 +11,65 @@ import {
 
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/firebase";
-import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { collection, doc, onSnapshot } from "firebase/firestore";
 import { LISTING_CATEGORIES } from "../utils/categories";
 
 function Navbar() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  const [profilePhoto, setProfilePhoto] = useState("");
-  const [profileName, setProfileName] = useState("");
-  const [profileUsername, setProfileUsername] = useState("");
+  const [profile, setProfile] = useState({
+    uid: "",
+    photoUrl: "",
+    name: "",
+    username: "",
+  });
   const [showCategories, setShowCategories] = useState(false);
 
   const [chatCount, setChatCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
-    async function fetchProfile() {
-      if (!currentUser) {
-        setProfilePhoto("");
-        setProfileName("");
-        setProfileUsername("");
-        return;
-      }
-
-      try {
-        const snap = await getDoc(doc(db, "users", currentUser.uid));
-
-        if (snap.exists()) {
-          const data = snap.data();
-
-          setProfilePhoto(data.photoUrl || "");
-          setProfileName(data.name || "");
-          setProfileUsername(data.username || "");
-        }
-      } catch (err) {
-        console.error("Navbar profile fetch error:", err);
-      }
+    if (!currentUser) {
+      return;
     }
 
-    fetchProfile();
+    const userId = currentUser.uid;
+
+    const unsubscribe = onSnapshot(
+      doc(db, "users", userId),
+      (snap) => {
+        if (!snap.exists()) {
+          setProfile({
+            uid: userId,
+            photoUrl: "",
+            name: "",
+            username: "",
+          });
+          return;
+        }
+
+        const data = snap.data();
+
+        setProfile({
+          uid: userId,
+          photoUrl: data.photoUrl || "",
+          name: data.name || "",
+          username: data.username || "",
+        });
+      },
+      (err) => {
+        console.error("Navbar profile fetch error:", err);
+      }
+    );
+
+    return unsubscribe;
   }, [currentUser]);
+
+  const activeProfile = currentUser?.uid === profile.uid ? profile : null;
+  const profilePhoto = activeProfile?.photoUrl || currentUser?.photoURL || "";
+  const profileName = activeProfile?.name || currentUser?.displayName || "";
+  const profileUsername = activeProfile?.username || "";
 
   useEffect(() => {
     if (!currentUser) {

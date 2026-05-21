@@ -246,15 +246,7 @@ function Chat() {
         if (chat.productId) productIds.add(chat.productId);
       });
 
-      const profiles = {};
       const soldMap = {};
-
-      await Promise.all(
-        [...users].map(async (id) => {
-          const snap = await getDoc(doc(db, "users", id));
-          if (snap.exists()) profiles[id] = snap.data();
-        })
-      );
 
       await Promise.all(
         [...productIds].map(async (productId) => {
@@ -265,7 +257,6 @@ function Chat() {
         })
       );
 
-      setUserMap(profiles);
       setPresenceUserIds([...users].sort());
       setProductSoldMap(soldMap);
 
@@ -288,6 +279,40 @@ function Chat() {
 
     return () => unsubscribe();
   }, [currentUser, chatId, navigate]);
+
+  useEffect(() => {
+    if (!presenceUserKey) {
+      return;
+    }
+
+    const userIds = presenceUserKey.split("|").filter(Boolean);
+
+    const unsubscribeProfiles = userIds.map((id) =>
+      onSnapshot(
+        doc(db, "users", id),
+        (snapshot) => {
+          setUserMap((prev) => {
+            const next = { ...prev };
+
+            if (snapshot.exists()) {
+              next[id] = snapshot.data();
+            } else {
+              delete next[id];
+            }
+
+            return next;
+          });
+        },
+        (error) => {
+          console.error("Chat profile fetch error:", error);
+        }
+      )
+    );
+
+    return () => {
+      unsubscribeProfiles.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [presenceUserKey]);
 
   useEffect(() => {
     if (!presenceUserKey) {

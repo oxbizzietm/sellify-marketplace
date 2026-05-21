@@ -12,6 +12,7 @@ import {
   query,
   where,
   getDocs,
+  onSnapshot,
   updateDoc,
   writeBatch,
 } from "firebase/firestore";
@@ -81,6 +82,7 @@ function ProductDetail() {
             ...docSnap.data(),
           };
 
+          setSeller(null);
           setProduct(productData);
           setActiveImage(0);
 
@@ -97,15 +99,9 @@ function ProductDetail() {
             setIsFavorite(favSnap.exists());
           }
 
-          if (productData.sellerId) {
-            const sellerSnap = await getDoc(
-              doc(db, "users", productData.sellerId)
-            );
-
-            if (sellerSnap.exists()) {
-              setSeller(sellerSnap.data());
-            }
-          }
+        } else {
+          setProduct(null);
+          setSeller(null);
         }
       } catch (error) {
         console.error(error);
@@ -116,6 +112,24 @@ function ProductDetail() {
 
     fetchProduct();
   }, [id, currentUser]);
+
+  useEffect(() => {
+    if (!product?.sellerId) {
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      doc(db, "users", product.sellerId),
+      (sellerSnap) => {
+        setSeller(sellerSnap.exists() ? sellerSnap.data() : null);
+      },
+      (error) => {
+        console.error("Seller profile fetch error:", error);
+      }
+    );
+
+    return unsubscribe;
+  }, [product?.sellerId]);
 
   async function toggleFavorite() {
     if (!currentUser) {
