@@ -20,9 +20,7 @@ import {
 import { db } from "../firebase/firebase";
 import { useAuth } from "../context/AuthContext";
 import { getProductContactInfo } from "../utils/contact";
-import { getAcceptedOfferForListing } from "../utils/offers";
 import {
-  getFinalSaleUnitPrice,
   getListingStock,
   getSalesTotal,
   getUnitsSold,
@@ -283,23 +281,40 @@ function ProductDetail() {
         chat.existingChat.unreadCounts?.[product.sellerId] || 0;
       const senderName = await getOfferSenderName();
 
-      await addDoc(collection(db, "chats", chat.chatId, "messages"), {
-        text: offerMessage,
-        type: "offer",
-        offerKind: "offer",
-        offerStatus: "pending",
-        status: "pending",
-        offerAmount,
-        senderId: currentUser.uid,
-        receiverId: product.sellerId,
-        read: false,
-        createdAt: serverTimestamp(),
-      });
+      const offerMessageRef = await addDoc(
+        collection(db, "chats", chat.chatId, "messages"),
+        {
+          text: offerMessage,
+          type: "offer",
+          offerKind: "offer",
+          offerStatus: "pending",
+          status: "pending",
+          dashboardApprovalStatus: "pending",
+          saleStatus: "offerPending",
+          offerAmount,
+          senderId: currentUser.uid,
+          receiverId: product.sellerId,
+          read: false,
+          createdAt: serverTimestamp(),
+        }
+      );
 
       await updateDoc(chat.chatRef, {
         lastMessage: offerMessage,
         lastSenderId: currentUser.uid,
         lastOfferAmount: offerAmount,
+        lastOfferStatus: "pending",
+        lastOfferKind: "offer",
+        lastOfferMessageId: offerMessageRef.id,
+        dashboardOfferMessageId: offerMessageRef.id,
+        lastOfferSenderId: currentUser.uid,
+        lastOfferReceiverId: product.sellerId,
+        offerStatus: "pending",
+        dashboardApprovalStatus: "pending",
+        saleStatus: "offerPending",
+        finalSoldPrice: null,
+        acceptedOfferAmount: null,
+        acceptedOfferMessageId: null,
         updatedAt: serverTimestamp(),
         [`unreadCounts.${product.sellerId}`]: sellerUnread + 1,
         [`deletedFor.${currentUser.uid}`]: false,
@@ -319,6 +334,7 @@ function ProductDetail() {
         productTitle: product.title || "",
         senderId: currentUser.uid,
         offerAmount,
+        offerStatus: "pending",
         read: false,
         createdAt: serverTimestamp(),
       });
@@ -369,24 +385,7 @@ function ProductDetail() {
     try {
       setMarkingSold(true);
 
-      let acceptedOffer = null;
-
-      try {
-        acceptedOffer = await getAcceptedOfferForListing(db, product.id);
-      } catch (err) {
-        console.error("Accepted offer lookup error:", err);
-      }
-
-      const saleProduct = acceptedOffer
-        ? {
-            ...product,
-            acceptedOfferAmount: acceptedOffer.amount,
-            finalSaleUnitPrice: acceptedOffer.amount,
-          }
-        : product;
-      const saleUnitPrice = acceptedOffer
-        ? acceptedOffer.amount
-        : getFinalSaleUnitPrice(saleProduct) || baseUnitPrice;
+      const saleUnitPrice = baseUnitPrice;
       const saleTotal = saleUnitPrice * soldQuantity;
       const nextStock = currentStock - soldQuantity;
       const nextUnitsSold = currentUnitsSold + soldQuantity;
@@ -404,9 +403,9 @@ function ProductDetail() {
         lastSaleTotal: saleTotal,
         finalSoldPrice: saleUnitPrice,
         finalSaleUnitPrice: saleUnitPrice,
-        acceptedOfferAmount: acceptedOffer?.amount || null,
-        acceptedOfferChatId: acceptedOffer?.chatId || null,
-        finalSaleSource: acceptedOffer ? "acceptedOffer" : "listingPrice",
+        acceptedOfferAmount: null,
+        acceptedOfferChatId: null,
+        finalSaleSource: "manualListingPrice",
         lastSoldAt: serverTimestamp(),
         inventoryUpdatedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -454,9 +453,9 @@ function ProductDetail() {
         lastSaleTotal: saleTotal,
         finalSoldPrice: saleUnitPrice,
         finalSaleUnitPrice: saleUnitPrice,
-        acceptedOfferAmount: acceptedOffer?.amount || null,
-        acceptedOfferChatId: acceptedOffer?.chatId || null,
-        finalSaleSource: acceptedOffer ? "acceptedOffer" : "listingPrice",
+        acceptedOfferAmount: null,
+        acceptedOfferChatId: null,
+        finalSaleSource: "manualListingPrice",
         lastSoldAt: new Date(),
         soldAt: fullySold ? new Date() : prev.soldAt,
       }));

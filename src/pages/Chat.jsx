@@ -161,7 +161,8 @@ function getOfferStatusMeta(status) {
       iconClass: "bg-green-600 text-white",
       badgeClass: "bg-green-600 text-white",
       amountClass: "text-green-700",
-      helperText: "Offer accepted",
+      helperText:
+        "Seller is interested. Final sale approval happens on dashboard",
     };
   }
 
@@ -561,19 +562,24 @@ function Chat() {
       currentUser.uid === activeChat.sellerId ? "The seller" : "A buyer"
     );
 
-    await addDoc(collection(db, "chats", activeChat.id, "messages"), {
-      text,
-      type: "offer",
-      offerKind: kind,
-      offerStatus: "pending",
-      status: "pending",
-      offerAmount: amount,
-      counterTo,
-      senderId: currentUser.uid,
-      receiverId,
-      read: false,
-      createdAt: serverTimestamp(),
-    });
+    const offerMessageRef = await addDoc(
+      collection(db, "chats", activeChat.id, "messages"),
+      {
+        text,
+        type: "offer",
+        offerKind: kind,
+        offerStatus: "pending",
+        status: "pending",
+        dashboardApprovalStatus: "pending",
+        saleStatus: "offerPending",
+        offerAmount: amount,
+        counterTo,
+        senderId: currentUser.uid,
+        receiverId,
+        read: false,
+        createdAt: serverTimestamp(),
+      }
+    );
 
     await updateDoc(doc(db, "chats", activeChat.id), {
       lastMessage: text,
@@ -581,6 +587,16 @@ function Chat() {
       lastOfferAmount: amount,
       lastOfferStatus: "pending",
       lastOfferKind: kind,
+      lastOfferMessageId: offerMessageRef.id,
+      dashboardOfferMessageId: offerMessageRef.id,
+      lastOfferSenderId: currentUser.uid,
+      lastOfferReceiverId: receiverId,
+      offerStatus: "pending",
+      dashboardApprovalStatus: "pending",
+      saleStatus: "offerPending",
+      finalSoldPrice: null,
+      acceptedOfferAmount: null,
+      acceptedOfferMessageId: null,
       updatedAt: serverTimestamp(),
       [`unreadCounts.${receiverId}`]: receiverUnread + 1,
       [`deletedFor.${currentUser.uid}`]: false,
@@ -662,6 +678,12 @@ function Chat() {
       batch.update(messageRef, {
         offerStatus: nextStatus,
         status: nextStatus,
+        dashboardApprovalStatus:
+          nextStatus === "accepted" ? "pending" : "rejected",
+        saleStatus:
+          nextStatus === "accepted"
+            ? "awaitingDashboardApproval"
+            : "rejected",
         actedAt: serverTimestamp(),
         actedBy: currentUser.uid,
       });
@@ -671,13 +693,23 @@ function Chat() {
         lastSenderId: currentUser.uid,
         lastOfferAmount: messageItem.offerAmount || 0,
         lastOfferStatus: nextStatus,
+        lastOfferMessageId: messageItem.id,
+        dashboardOfferMessageId: messageItem.id,
+        lastOfferSenderId: messageItem.senderId,
+        lastOfferReceiverId: messageItem.receiverId || currentUser.uid,
+        offerStatus: nextStatus,
         ...(nextStatus === "accepted"
           ? {
               acceptedOfferAmount: messageItem.offerAmount || 0,
               acceptedOfferMessageId: messageItem.id,
               acceptedOfferAt: serverTimestamp(),
+              dashboardApprovalStatus: "pending",
+              saleStatus: "awaitingDashboardApproval",
             }
-          : {}),
+          : {
+              dashboardApprovalStatus: "rejected",
+              saleStatus: "rejected",
+            }),
         updatedAt: serverTimestamp(),
         [`deletedFor.${messageItem.senderId}`]: false,
         [`spamFor.${messageItem.senderId}`]: false,

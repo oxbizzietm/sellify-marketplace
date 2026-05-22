@@ -124,8 +124,16 @@ function ProductCard({ product, compact = false }) {
 
   return (
     <Link to={`/product/${product.id}`} className="group block h-full min-w-0">
-      <article className="flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-100">
-        <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+      <article
+        className={`flex h-full flex-col overflow-hidden border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-100 ${
+          compact ? "rounded-[1rem] sm:rounded-[1.7rem]" : "rounded-[1.7rem]"
+        }`}
+      >
+        <div
+          className={`relative overflow-hidden bg-slate-100 ${
+            compact ? "aspect-[3/2] sm:aspect-[4/3]" : "aspect-[4/3]"
+          }`}
+        >
           <img
             src={productImage}
             alt={product.title || "Product image"}
@@ -135,15 +143,31 @@ function ProductCard({ product, compact = false }) {
 
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-slate-950/15" />
 
-          <div className="absolute left-3 top-3 flex max-w-[calc(100%-4.5rem)] flex-wrap gap-2">
-            <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-emerald-700 shadow-sm backdrop-blur">
-              <Tag size={12} />
+          <div
+            className={`absolute flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5 ${
+              compact ? "left-2 top-2 sm:left-3 sm:top-3" : "left-3 top-3"
+            }`}
+          >
+            <span
+              className={`inline-flex max-w-full items-center gap-1 rounded-full bg-white/95 font-black uppercase tracking-wide text-emerald-700 shadow-sm backdrop-blur ${
+                compact
+                  ? "px-2 py-0.5 text-[9px] sm:px-3 sm:py-1 sm:text-[11px]"
+                  : "px-3 py-1 text-[11px]"
+              }`}
+            >
+              <Tag size={compact ? 10 : 12} />
               <span className="truncate">{product.category || "General"}</span>
             </span>
 
             {imageCount > 1 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-950/70 px-3 py-1 text-[11px] font-black text-white backdrop-blur">
-                <Camera size={12} />
+              <span
+                className={`inline-flex items-center gap-1 rounded-full bg-slate-950/70 font-black text-white backdrop-blur ${
+                  compact
+                    ? "px-2 py-0.5 text-[9px] sm:px-3 sm:py-1 sm:text-[11px]"
+                    : "px-3 py-1 text-[11px]"
+                }`}
+              >
+                <Camera size={compact ? 10 : 12} />
                 {imageCount}
               </span>
             )}
@@ -152,26 +176,48 @@ function ProductCard({ product, compact = false }) {
           <button
             type="button"
             onClick={toggleFavorite}
-            className={`absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-sm backdrop-blur transition-all duration-200 hover:bg-red-50 ${
+            className={`absolute grid place-items-center rounded-full bg-white/95 shadow-sm backdrop-blur transition-all duration-200 hover:bg-red-50 ${
               isFavorite ? "text-red-500" : "text-slate-700 hover:text-red-500"
-            } ${pop ? "scale-125" : "scale-100"}`}
+            } ${compact ? "right-2 top-2 h-8 w-8 sm:right-3 sm:top-3 sm:h-10 sm:w-10" : "right-3 top-3 h-10 w-10"} ${
+              pop ? "scale-125" : "scale-100"
+            }`}
             title={isFavorite ? "Remove from favourites" : "Add to favourites"}
           >
             <Heart
-              size={18}
+              size={compact ? 16 : 18}
               fill={isFavorite ? "currentColor" : "none"}
               className="transition-all duration-200"
             />
           </button>
 
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
-            <span className="min-w-0 truncate rounded-full bg-white/95 px-3 py-1 text-[11px] font-black text-slate-700 shadow-sm backdrop-blur">
+          <div
+            className={`absolute flex items-center justify-between gap-1.5 ${
+              compact
+                ? "bottom-2 left-2 right-2 sm:bottom-3 sm:left-3 sm:right-3"
+                : "bottom-3 left-3 right-3"
+            }`}
+          >
+            <span
+              className={`min-w-0 truncate rounded-full bg-white/95 font-black text-slate-700 shadow-sm backdrop-blur ${
+                compact
+                  ? "px-2 py-0.5 text-[9px] sm:px-3 sm:py-1 sm:text-[11px]"
+                  : "px-3 py-1 text-[11px]"
+              }`}
+            >
               {stock <= 0 ? "Out of stock" : product.condition || "Available"}
             </span>
 
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-black text-white shadow-sm">
-              <ShieldCheck size={13} />
-              Verified
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500 font-black text-white shadow-sm ${
+                compact
+                  ? "px-2 py-0.5 text-[9px] sm:px-3 sm:py-1 sm:text-[11px]"
+                  : "px-3 py-1 text-[11px]"
+              }`}
+            >
+              <ShieldCheck size={compact ? 10 : 13} />
+              <span className={compact ? "hidden sm:inline" : ""}>
+                Verified
+              </span>
             </span>
           </div>
         </div>
@@ -215,7 +261,7 @@ function ProductCard({ product, compact = false }) {
             <p
               className={
                 compact
-                  ? "mt-3 text-lg font-black tracking-tight text-emerald-600 sm:mt-4 sm:text-2xl"
+                  ? "mt-3 text-base font-black tracking-tight text-emerald-600 sm:mt-4 sm:text-2xl"
                   : "mt-4 text-2xl font-black tracking-tight text-emerald-600"
               }
             >

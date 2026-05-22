@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -25,6 +25,7 @@ function Navbar() {
     username: "",
   });
   const [showCategories, setShowCategories] = useState(false);
+  const categoriesRef = useRef(null);
 
   const [chatCount, setChatCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
@@ -101,6 +102,33 @@ function Navbar() {
   }, [currentUser]);
 
   useEffect(() => {
+    if (!showCategories) return;
+
+    function handleClickOutside(event) {
+      if (
+        categoriesRef.current &&
+        !categoriesRef.current.contains(event.target)
+      ) {
+        setShowCategories(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setShowCategories(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showCategories]);
+
+  useEffect(() => {
     if (!currentUser) {
       return;
     }
@@ -142,9 +170,12 @@ function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 overflow-x-hidden border-b border-slate-200 bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-3 py-3 sm:px-4 lg:flex-nowrap lg:gap-4 lg:px-5 lg:py-4">
-        <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+        <Link
+          to="/"
+          className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3"
+        >
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-green-600 text-lg font-black text-white shadow-sm sm:h-11 sm:w-11 sm:rounded-2xl sm:text-xl">
             S
           </div>
@@ -160,27 +191,34 @@ function Navbar() {
           </div>
         </Link>
 
-        <div className="relative hidden lg:block">
+        <div
+          ref={categoriesRef}
+          className="relative order-1 shrink-0 lg:order-none"
+        >
           <button
+            type="button"
             onClick={() => setShowCategories(!showCategories)}
-            className="flex items-center gap-2 rounded-2xl border border-slate-300 px-4 py-3 font-bold text-slate-700 transition hover:border-green-500 hover:text-green-600"
+            aria-expanded={showCategories}
+            aria-haspopup="menu"
+            className="flex h-10 items-center gap-1.5 rounded-xl border border-slate-300 px-3 text-sm font-bold text-slate-700 transition hover:border-green-500 hover:text-green-600 sm:h-11 sm:gap-2 sm:px-4 lg:h-auto lg:rounded-2xl lg:py-3 lg:text-base"
           >
-            <Menu size={18} />
-            Categories
+            <Menu size={18} className="shrink-0" />
+            <span>Categories</span>
             <ChevronDown
-              size={17}
+              size={16}
               className={`transition ${showCategories ? "rotate-180" : ""}`}
             />
           </button>
 
           {showCategories && (
-            <div className="absolute left-0 top-16 z-50 w-72 rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl">
-              <div className="grid grid-cols-2 gap-2">
+            <div className="fixed left-3 right-3 top-[4.6rem] z-[70] max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl sm:left-auto sm:right-4 sm:w-72 lg:absolute lg:left-0 lg:right-auto lg:top-full lg:mt-3 lg:w-72">
+              <div className="space-y-1">
                 {LISTING_CATEGORIES.map((category) => (
                   <button
                     key={category}
+                    type="button"
                     onClick={() => goToCategory(category)}
-                    className="rounded-xl px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-green-50 hover:text-green-600"
+                    className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-green-50 hover:text-green-600"
                   >
                     {category}
                   </button>
@@ -212,7 +250,7 @@ function Navbar() {
           </div>
         </form>
 
-        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2 lg:flex-nowrap lg:gap-3">
+        <div className="order-2 ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2 lg:order-none lg:flex-nowrap lg:gap-3">
           <Link
             to="/sell"
             className="shrink-0 rounded-xl bg-green-600 px-3 py-2 text-sm font-black text-white transition hover:bg-green-700 sm:px-4 lg:rounded-2xl lg:px-6 lg:py-3 lg:text-base"
@@ -220,9 +258,29 @@ function Navbar() {
             Sell
           </Link>
 
+          {!currentUser && (
+            <div className="flex min-w-0 shrink-0 items-center gap-1.5 lg:hidden">
+              <Link
+                to="/login"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 px-3 text-sm font-black text-slate-700 transition hover:border-green-500 hover:text-green-600"
+              >
+                Login
+              </Link>
+
+              <Link
+                to="/register"
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-green-600 px-3 text-sm font-black text-white transition hover:bg-green-700"
+              >
+                Register
+              </Link>
+            </div>
+          )}
+
           <Link
             to={currentUser ? "/favorites" : "/login"}
-            className="group flex shrink-0 flex-col items-center"
+            className={`group shrink-0 flex-col items-center ${
+              currentUser ? "flex" : "hidden lg:flex"
+            }`}
           >
             <div className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-red-50 hover:text-red-500 sm:h-11 sm:w-11">
               <Heart size={20} />
@@ -235,7 +293,9 @@ function Navbar() {
 
           <Link
             to={currentUser ? "/chat" : "/login"}
-            className="group relative flex shrink-0 flex-col items-center"
+            className={`group relative shrink-0 flex-col items-center ${
+              currentUser ? "flex" : "hidden lg:flex"
+            }`}
           >
             <div className="relative grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-red-50 hover:text-red-500 sm:h-11 sm:w-11">
               <MessageCircle size={20} />
@@ -254,7 +314,9 @@ function Navbar() {
 
           <Link
             to={currentUser ? "/alerts" : "/login"}
-            className="group relative flex shrink-0 flex-col items-center"
+            className={`group relative shrink-0 flex-col items-center ${
+              currentUser ? "flex" : "hidden lg:flex"
+            }`}
           >
             <div className="relative grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-red-50 hover:text-red-500 sm:h-11 sm:w-11">
               <Bell size={20} />

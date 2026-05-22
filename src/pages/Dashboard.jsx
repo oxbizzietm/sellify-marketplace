@@ -17,11 +17,13 @@ import {
   X,
 } from "lucide-react";
 import {
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
   getDocs,
   query,
+  runTransaction,
   serverTimestamp,
   updateDoc,
   where,
@@ -32,12 +34,7 @@ import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/firebase";
 import { LISTING_CATEGORIES } from "../utils/categories";
 import {
-  getAcceptedOfferForListing,
-  getAcceptedOfferFromChats,
-} from "../utils/offers";
-import {
   formatListingPrice,
-  getFinalSaleUnitPrice,
   getListingImage,
   getListingStatus,
   getListingStock,
@@ -119,19 +116,78 @@ function formatDate(value) {
   }).format(new Date(time));
 }
 
-function applyAcceptedOffer(product, acceptedOffer) {
-  if (!acceptedOffer?.amount) return product;
+function getChatOfferStatus(chat) {
+  return chat?.lastOfferStatus || chat?.offerStatus || "pending";
+}
 
-  return {
-    ...product,
-    acceptedOfferAmount:
-      product.acceptedOfferAmount || acceptedOffer.amount,
-    finalSoldPrice: product.finalSoldPrice || acceptedOffer.amount,
-    finalSaleUnitPrice:
-      product.finalSaleUnitPrice || acceptedOffer.amount,
-    acceptedOfferChatId:
-      product.acceptedOfferChatId || acceptedOffer.chatId || "",
-  };
+function getDashboardApprovalStatus(chat) {
+  if (chat?.dashboardApprovalStatus) return chat.dashboardApprovalStatus;
+  if (chat?.saleStatus === "completed") return "completed";
+  if (chat?.saleStatus === "rejected") return "rejected";
+  return "pending";
+}
+
+function getOfferAmount(chat) {
+  const amount = Number(
+    chat?.finalSoldPrice ?? chat?.acceptedOfferAmount ?? chat?.lastOfferAmount
+  );
+
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
+function getOfferMessageId(chat) {
+  return (
+    chat?.dashboardOfferMessageId ||
+    chat?.acceptedOfferMessageId ||
+    chat?.lastOfferMessageId ||
+    ""
+  );
+}
+
+function isCompletedDashboardSale(chat) {
+  return getDashboardApprovalStatus(chat) === "completed";
+}
+
+function isTerminalDashboardOffer(chat) {
+  const status = getDashboardApprovalStatus(chat);
+  return status === "completed" || status === "rejected";
+}
+
+function shouldShowDashboardOffer(chat) {
+  const amount = Number(chat?.lastOfferAmount);
+  const status = getChatOfferStatus(chat);
+  const lastOfferSenderId = chat?.lastOfferSenderId || "";
+  const buyerMadeOffer = lastOfferSenderId
+    ? lastOfferSenderId === chat?.buyerId
+    : chat?.lastSenderId !== chat?.sellerId;
+
+  return (
+    Number.isFinite(amount) &&
+    amount > 0 &&
+    ["pending", "accepted"].includes(status) &&
+    !isTerminalDashboardOffer(chat) &&
+    (buyerMadeOffer || status === "accepted")
+  );
+}
+
+function getOfferStatusLabel(chat) {
+  const status = getChatOfferStatus(chat);
+  const approvalStatus = getDashboardApprovalStatus(chat);
+
+  if (approvalStatus === "completed") return "Completed sale";
+  if (approvalStatus === "rejected") return "Rejected sale";
+  if (status === "accepted") return "Chat accepted";
+  return "Pending chat offer";
+}
+
+function getBuyerLabel(chat) {
+  return (
+    chat?.buyerName ||
+    chat?.buyerDisplayName ||
+    chat?.buyerEmail ||
+    chat?.buyerId ||
+    "Buyer"
+  );
 }
 
 function getEditForm(product) {
@@ -171,6 +227,7 @@ function Dashboard() {
   const [error, setError] = useState("");
   const [deletingActiveListings, setDeletingActiveListings] = useState(false);
   const [savingProductId, setSavingProductId] = useState("");
+  const [saleActionLoading, setSaleActionLoading] = useState({});
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [editingProduct, setEditingProduct] = useState(null);
@@ -252,28 +309,26 @@ function Dashboard() {
     [products]
   );
 
-  const acceptedOfferByProductId = useMemo(() => {
-    return products.reduce((offers, product) => {
-      const acceptedOffer = getAcceptedOfferFromChats(
-        sellerChats,
-        product.id
-      );
-
-      if (acceptedOffer) {
-        offers[product.id] = acceptedOffer;
-      }
-
-      return offers;
+  const productById = useMemo(() => {
+    return products.reduce((items, product) => {
+      items[product.id] = product;
+      return items;
     }, {});
-  }, [products, sellerChats]);
+  }, [products]);
+
+  const pendingDashboardOffers = useMemo(() => {
+    return sellerChats
+      .filter(shouldShowDashboardOffer)
+      .map((chat) => ({
+        ...chat,
+        product: productById[chat.productId],
+      }))
+      .sort((a, b) => getTimeValue(b.updatedAt) - getTimeValue(a.updatedAt));
+  }, [sellerChats, productById]);
 
   const stats = useMemo(() => {
     const revenue = products.reduce(
-      (total, product) =>
-        total +
-        getSalesTotal(
-          applyAcceptedOffer(product, acceptedOfferByProductId[product.id])
-        ),
+      (total, product) => total + getSalesTotal(product),
       0
     );
     const unitsSold = products.reduce(
@@ -283,11 +338,11 @@ function Dashboard() {
     const stockUnits = products
       .filter((product) => product.sold !== true)
       .reduce((total, product) => total + getListingStock(product), 0);
-    const pendingOffers = sellerChats.filter(
-      (chat) => chat.lastOfferStatus === "pending"
-    ).length;
+    const pendingOffers = pendingDashboardOffers.length;
     const acceptedOffers = sellerChats.filter(
-      (chat) => chat.lastOfferStatus === "accepted"
+      (chat) =>
+        getChatOfferStatus(chat) === "accepted" &&
+        !isTerminalDashboardOffer(chat)
     ).length;
 
     return {
@@ -308,22 +363,59 @@ function Dashboard() {
         (product) => product.sold !== true && getListingStock(product) <= 0
       ).length,
     };
-  }, [products, sellerChats, acceptedOfferByProductId]);
+  }, [products, sellerChats, pendingDashboardOffers]);
 
   const orderOverview = useMemo(() => {
+    const completedOfferProductIds = new Set(
+      sellerChats
+        .filter(isCompletedDashboardSale)
+        .map((chat) => chat.productId)
+        .filter(Boolean)
+    );
+
+    const completedOfferOrders = sellerChats
+      .filter(isCompletedDashboardSale)
+      .map((chat) => {
+        const product = productById[chat.productId];
+
+        return {
+          id: `offer-${chat.id}`,
+          title:
+            chat.productTitle ||
+            product?.title ||
+            "Completed offer sale",
+          amount:
+            getOfferAmount(chat) ||
+            Number(chat.lastOfferAmount || chat.productPrice) ||
+            0,
+          status: "Completed sale",
+          statusClass: "bg-green-50 text-green-700",
+          image:
+            chat.productImage ||
+            (product
+              ? getListingImage(product)
+              : "https://placehold.co/800x600?text=Sellify"),
+          date:
+            chat.dashboardCompletedAt ||
+            chat.completedAt ||
+            chat.updatedAt ||
+            chat.createdAt,
+          to: `/chat/${chat.id}`,
+        };
+      });
+
     const soldOrders = products
-      .filter((product) => getUnitsSold(product) > 0)
+      .filter(
+        (product) =>
+          getUnitsSold(product) > 0 && !completedOfferProductIds.has(product.id)
+      )
       .map((product) => {
-        const productWithFinalPrice = applyAcceptedOffer(
-          product,
-          acceptedOfferByProductId[product.id]
-        );
         const unitsSold = getUnitsSold(product);
 
         return {
           id: `sold-${product.id}`,
           title: product.title || "Untitled listing",
-          amount: getSalesTotal(productWithFinalPrice),
+          amount: getSalesTotal(product),
           status: `${unitsSold} unit${unitsSold === 1 ? "" : "s"} sold`,
           statusClass:
             product.sold === true
@@ -339,39 +431,10 @@ function Dashboard() {
         };
       });
 
-    const offerOrders = sellerChats
-      .filter((chat) => chat.lastOfferAmount || chat.lastOfferStatus)
-      .map((chat) => {
-        const status = chat.lastOfferStatus || "pending";
-
-        return {
-          id: `offer-${chat.id}`,
-          title: chat.productTitle || "Listing offer",
-          amount: Number(chat.lastOfferAmount || chat.productPrice) || 0,
-          status:
-            status === "accepted"
-              ? "Accepted offer"
-              : status === "rejected"
-              ? "Rejected offer"
-              : "Pending offer",
-          statusClass:
-            status === "accepted"
-              ? "bg-green-50 text-green-700"
-              : status === "rejected"
-              ? "bg-red-50 text-red-600"
-              : "bg-orange-50 text-orange-700",
-          image:
-            chat.productImage ||
-            "https://placehold.co/800x600?text=Sellify",
-          date: chat.updatedAt || chat.createdAt,
-          to: `/chat/${chat.id}`,
-        };
-      });
-
-    return [...soldOrders, ...offerOrders].sort(
+    return [...completedOfferOrders, ...soldOrders].sort(
       (a, b) => getTimeValue(b.date) - getTimeValue(a.date)
     );
-  }, [sellerChats, products, acceptedOfferByProductId]);
+  }, [sellerChats, products, productById]);
 
   const filteredProducts = useMemo(() => {
     const searchTerm = search.trim().toLowerCase();
@@ -433,6 +496,335 @@ function Dashboard() {
           : product
       )
     );
+  }
+
+  function patchSellerChat(chatId, changes) {
+    setSellerChats((currentChats) =>
+      currentChats.map((chat) =>
+        chat.id === chatId
+          ? {
+              ...chat,
+              ...changes,
+              updatedAt: new Date(),
+            }
+          : chat
+      )
+    );
+  }
+
+  async function handleAcceptSale(offer) {
+    if (!offer?.id || saleActionLoading[offer.id]) return;
+
+    const offerAmount = Number(offer.lastOfferAmount);
+
+    if (!offer.productId) {
+      window.alert("This offer is missing its listing reference.");
+      return;
+    }
+
+    if (!Number.isFinite(offerAmount) || offerAmount <= 0) {
+      window.alert("This offer does not have a valid amount.");
+      return;
+    }
+
+    if (!productById[offer.productId]) {
+      window.alert("This listing could not be found.");
+      return;
+    }
+
+    setSaleActionLoading((current) => ({
+      ...current,
+      [offer.id]: "accept",
+    }));
+
+    try {
+      const productRef = doc(db, "products", offer.productId);
+      const chatRef = doc(db, "chats", offer.id);
+
+      const result = await runTransaction(db, async (transaction) => {
+        const productSnap = await transaction.get(productRef);
+        const chatSnap = await transaction.get(chatRef);
+
+        if (!productSnap.exists()) {
+          throw new Error("LISTING_NOT_FOUND");
+        }
+
+        if (!chatSnap.exists()) {
+          throw new Error("CHAT_NOT_FOUND");
+        }
+
+        const productData = productSnap.data();
+        const chatData = chatSnap.data();
+        const currentApprovalStatus = getDashboardApprovalStatus(chatData);
+        const completedOfferIds = Array.isArray(
+          productData.completedOfferChatIds
+        )
+          ? productData.completedOfferChatIds
+          : [];
+        const transactionOfferAmount = getOfferAmount(chatData) || offerAmount;
+
+        if (currentApprovalStatus === "completed") {
+          return {
+            alreadyCompleted: true,
+            chatPatch: {
+              dashboardApprovalStatus: "completed",
+              saleStatus: "completed",
+            },
+          };
+        }
+
+        if (
+          completedOfferIds.includes(offer.id) ||
+          productData.lastCompletedOfferChatId === offer.id
+        ) {
+          const completedChatUpdate = {
+            dashboardApprovalStatus: "completed",
+            saleStatus: "completed",
+            finalSoldPrice: transactionOfferAmount,
+            acceptedOfferAmount: transactionOfferAmount,
+            updatedAt: serverTimestamp(),
+          };
+
+          transaction.update(chatRef, completedChatUpdate);
+
+          return {
+            alreadyCompleted: true,
+            chatPatch: {
+              dashboardApprovalStatus: "completed",
+              saleStatus: "completed",
+              finalSoldPrice: transactionOfferAmount,
+              acceptedOfferAmount: transactionOfferAmount,
+            },
+          };
+        }
+
+        if (
+          !Number.isFinite(transactionOfferAmount) ||
+          transactionOfferAmount <= 0
+        ) {
+          throw new Error("INVALID_OFFER_AMOUNT");
+        }
+
+        if (productData.sold === true || getListingStock(productData) <= 0) {
+          throw new Error("NO_STOCK");
+        }
+
+        const currentStock = getListingStock(productData);
+        const currentUnitsSold = getUnitsSold(productData);
+        const currentSalesTotal = getSalesTotal(productData);
+        const nextStock = Math.max(0, currentStock - 1);
+        const nextUnitsSold = currentUnitsSold + 1;
+        const nextSalesTotal = currentSalesTotal + transactionOfferAmount;
+        const fullySold = nextStock === 0;
+        const nextListingStatus = fullySold
+          ? "sold"
+          : productData.listingStatus === "sold"
+          ? "active"
+          : productData.listingStatus || "active";
+
+        const productUpdate = {
+          stock: nextStock,
+          unitsSold: nextUnitsSold,
+          soldQuantity: nextUnitsSold,
+          salesTotal: nextSalesTotal,
+          saleTotal: nextSalesTotal,
+          lastSoldQuantity: 1,
+          lastSaleTotal: transactionOfferAmount,
+          finalSoldPrice: transactionOfferAmount,
+          finalSaleUnitPrice: transactionOfferAmount,
+          acceptedOfferAmount: transactionOfferAmount,
+          acceptedOfferChatId: offer.id,
+          lastCompletedOfferChatId: offer.id,
+          completedOfferChatIds: arrayUnion(offer.id),
+          finalSaleSource: "dashboardOffer",
+          saleStatus: fullySold ? "sold" : "partiallySold",
+          listingStatus: nextListingStatus,
+          sold: fullySold,
+          lastSoldAt: serverTimestamp(),
+          inventoryUpdatedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        if (fullySold) {
+          productUpdate.soldAt = serverTimestamp();
+        }
+
+        const chatUpdate = {
+          dashboardApprovalStatus: "completed",
+          saleStatus: "completed",
+          offerStatus: "accepted",
+          lastOfferStatus: "accepted",
+          finalSoldPrice: transactionOfferAmount,
+          acceptedOfferAmount: transactionOfferAmount,
+          productSold: fullySold,
+          dashboardCompletedAt: serverTimestamp(),
+          completedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        transaction.update(productRef, productUpdate);
+        transaction.update(chatRef, chatUpdate);
+
+        return {
+          alreadyCompleted: false,
+          fullySold,
+          productPatch: {
+            stock: nextStock,
+            unitsSold: nextUnitsSold,
+            soldQuantity: nextUnitsSold,
+            salesTotal: nextSalesTotal,
+            saleTotal: nextSalesTotal,
+            lastSoldQuantity: 1,
+            lastSaleTotal: transactionOfferAmount,
+            finalSoldPrice: transactionOfferAmount,
+            finalSaleUnitPrice: transactionOfferAmount,
+            acceptedOfferAmount: transactionOfferAmount,
+            acceptedOfferChatId: offer.id,
+            lastCompletedOfferChatId: offer.id,
+            completedOfferChatIds: [
+              ...new Set([...completedOfferIds, offer.id]),
+            ],
+            finalSaleSource: "dashboardOffer",
+            saleStatus: fullySold ? "sold" : "partiallySold",
+            listingStatus: nextListingStatus,
+            sold: fullySold,
+            lastSoldAt: new Date(),
+            inventoryUpdatedAt: new Date(),
+            ...(fullySold ? { soldAt: new Date() } : {}),
+          },
+          chatPatch: {
+            dashboardApprovalStatus: "completed",
+            saleStatus: "completed",
+            offerStatus: "accepted",
+            lastOfferStatus: "accepted",
+            finalSoldPrice: transactionOfferAmount,
+            acceptedOfferAmount: transactionOfferAmount,
+            productSold: fullySold,
+            dashboardCompletedAt: new Date(),
+            completedAt: new Date(),
+          },
+          offerAmount: transactionOfferAmount,
+        };
+      });
+
+      if (result.productPatch) {
+        patchProduct(offer.productId, result.productPatch);
+      }
+
+      if (result.chatPatch) {
+        patchSellerChat(offer.id, result.chatPatch);
+      }
+
+      if (result.fullySold) {
+        await syncChatSoldState(offer.productId, true);
+        setSellerChats((currentChats) =>
+          currentChats.map((chat) =>
+            chat.productId === offer.productId
+              ? {
+                  ...chat,
+                  productSold: true,
+                  ...(chat.id === offer.id ? result.chatPatch : {}),
+                }
+              : chat
+          )
+        );
+      }
+
+      const offerMessageId = getOfferMessageId(offer);
+
+      if (offerMessageId) {
+        try {
+          await updateDoc(
+            doc(db, "chats", offer.id, "messages", offerMessageId),
+            {
+              offerStatus: "accepted",
+              status: "accepted",
+              dashboardApprovalStatus: "completed",
+              saleStatus: "completed",
+              finalSoldPrice: result.offerAmount || offerAmount,
+              acceptedOfferAmount: result.offerAmount || offerAmount,
+              dashboardCompletedAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }
+          );
+        } catch (err) {
+          console.error("Offer message completion sync error:", err);
+        }
+      }
+    } catch (err) {
+      console.error("Accept sale error:", err);
+
+      if (err.message === "NO_STOCK") {
+        window.alert("This listing has no stock left to sell.");
+      } else {
+        window.alert("Failed to accept this sale. Please try again.");
+      }
+    } finally {
+      setSaleActionLoading((current) => {
+        const next = { ...current };
+        delete next[offer.id];
+        return next;
+      });
+    }
+  }
+
+  async function handleRejectSale(offer) {
+    if (!offer?.id || saleActionLoading[offer.id]) return;
+
+    setSaleActionLoading((current) => ({
+      ...current,
+      [offer.id]: "reject",
+    }));
+
+    const chatPatch = {
+      dashboardApprovalStatus: "rejected",
+      saleStatus: "rejected",
+      offerStatus: "rejected",
+      lastOfferStatus: "rejected",
+      dashboardRejectedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    try {
+      await updateDoc(doc(db, "chats", offer.id), chatPatch);
+
+      const offerMessageId = getOfferMessageId(offer);
+
+      if (offerMessageId) {
+        try {
+          await updateDoc(
+            doc(db, "chats", offer.id, "messages", offerMessageId),
+            {
+              offerStatus: "rejected",
+              status: "rejected",
+              dashboardApprovalStatus: "rejected",
+              saleStatus: "rejected",
+              dashboardRejectedAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }
+          );
+        } catch (err) {
+          console.error("Offer message rejection sync error:", err);
+        }
+      }
+
+      patchSellerChat(offer.id, {
+        dashboardApprovalStatus: "rejected",
+        saleStatus: "rejected",
+        offerStatus: "rejected",
+        lastOfferStatus: "rejected",
+        dashboardRejectedAt: new Date(),
+      });
+    } catch (err) {
+      console.error("Reject sale error:", err);
+      window.alert("Failed to reject this sale. Please try again.");
+    } finally {
+      setSaleActionLoading((current) => {
+        const next = { ...current };
+        delete next[offer.id];
+        return next;
+      });
+    }
   }
 
   async function handleDelete(product) {
@@ -552,20 +944,9 @@ function Dashboard() {
       resolvedStatus = nextSoldState ? "sold" : "active";
     }
 
-    let acceptedOffer = null;
-
-    if (soldQuantity > 0) {
-      try {
-        acceptedOffer = await getAcceptedOfferForListing(db, product.id);
-      } catch (err) {
-        console.error("Accepted offer lookup error:", err);
-      }
-    }
-
-    const saleProduct = applyAcceptedOffer(product, acceptedOffer);
     const saleUnitPrice =
       soldQuantity > 0
-        ? getFinalSaleUnitPrice(saleProduct) || baseUnitPrice
+        ? baseUnitPrice
         : baseUnitPrice;
     const saleTotal = saleUnitPrice * soldQuantity;
 
@@ -588,11 +969,9 @@ function Dashboard() {
       updateData.lastSaleTotal = saleTotal;
       updateData.finalSoldPrice = saleUnitPrice;
       updateData.finalSaleUnitPrice = saleUnitPrice;
-      updateData.acceptedOfferAmount = acceptedOffer?.amount || null;
-      updateData.acceptedOfferChatId = acceptedOffer?.chatId || null;
-      updateData.finalSaleSource = acceptedOffer
-        ? "acceptedOffer"
-        : "listingPrice";
+      updateData.acceptedOfferAmount = null;
+      updateData.acceptedOfferChatId = null;
+      updateData.finalSaleSource = "manualListingPrice";
       updateData.lastSoldAt = serverTimestamp();
       updateData.inventoryUpdatedAt = serverTimestamp();
     }
@@ -628,11 +1007,9 @@ function Dashboard() {
               lastSaleTotal: saleTotal,
               finalSoldPrice: saleUnitPrice,
               finalSaleUnitPrice: saleUnitPrice,
-              acceptedOfferAmount: acceptedOffer?.amount || null,
-              acceptedOfferChatId: acceptedOffer?.chatId || null,
-              finalSaleSource: acceptedOffer
-                ? "acceptedOffer"
-                : "listingPrice",
+              acceptedOfferAmount: null,
+              acceptedOfferChatId: null,
+              finalSaleSource: "manualListingPrice",
               lastSoldAt: new Date(),
               inventoryUpdatedAt: new Date(),
             }
@@ -742,29 +1119,9 @@ function Dashboard() {
       resolvedStatus = nextSoldState ? "sold" : "active";
     }
 
-    let acceptedOffer = null;
-
-    if (soldQuantity > 0) {
-      try {
-        acceptedOffer = await getAcceptedOfferForListing(
-          db,
-          editingProduct.id
-        );
-      } catch (err) {
-        console.error("Accepted offer lookup error:", err);
-      }
-    }
-
-    const saleProduct = applyAcceptedOffer(
-      {
-        ...editingProduct,
-        price: unitPrice,
-      },
-      acceptedOffer
-    );
     const saleUnitPrice =
       soldQuantity > 0
-        ? getFinalSaleUnitPrice(saleProduct) || unitPrice
+        ? unitPrice
         : unitPrice;
     const saleTotal = saleUnitPrice * soldQuantity;
 
@@ -808,11 +1165,9 @@ function Dashboard() {
       updateData.lastSaleTotal = saleTotal;
       updateData.finalSoldPrice = saleUnitPrice;
       updateData.finalSaleUnitPrice = saleUnitPrice;
-      updateData.acceptedOfferAmount = acceptedOffer?.amount || null;
-      updateData.acceptedOfferChatId = acceptedOffer?.chatId || null;
-      updateData.finalSaleSource = acceptedOffer
-        ? "acceptedOffer"
-        : "listingPrice";
+      updateData.acceptedOfferAmount = null;
+      updateData.acceptedOfferChatId = null;
+      updateData.finalSaleSource = "manualListingPrice";
       updateData.lastSoldAt = serverTimestamp();
       updateData.inventoryUpdatedAt = serverTimestamp();
     }
@@ -848,11 +1203,9 @@ function Dashboard() {
               lastSaleTotal: saleTotal,
               finalSoldPrice: saleUnitPrice,
               finalSaleUnitPrice: saleUnitPrice,
-              acceptedOfferAmount: acceptedOffer?.amount || null,
-              acceptedOfferChatId: acceptedOffer?.chatId || null,
-              finalSaleSource: acceptedOffer
-                ? "acceptedOffer"
-                : "listingPrice",
+              acceptedOfferAmount: null,
+              acceptedOfferChatId: null,
+              finalSaleSource: "manualListingPrice",
               lastSoldAt: new Date(),
               inventoryUpdatedAt: new Date(),
             }
@@ -961,6 +1314,59 @@ function Dashboard() {
           />
         </section>
 
+        <section className="mb-6 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-wide text-green-600">
+                Sales approval
+              </p>
+
+              <h2 className="mt-1 text-2xl font-black text-slate-950">
+                Pending Offers
+              </h2>
+
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                Chat acceptance only confirms interest. Approve a sale here to
+                update revenue and stock.
+              </p>
+            </div>
+
+            <span className="w-fit rounded-full bg-green-50 px-4 py-2 text-sm font-black text-green-700">
+              {pendingDashboardOffers.length} awaiting approval
+            </span>
+          </div>
+
+          {loading ? (
+            <div className="mt-5 grid gap-4 xl:grid-cols-2">
+              {[1, 2].map((item) => (
+                <div
+                  key={item}
+                  className="h-48 animate-pulse rounded-[1.5rem] bg-slate-100"
+                />
+              ))}
+            </div>
+          ) : pendingDashboardOffers.length === 0 ? (
+            <EmptyState
+              compact
+              title="No pending offers"
+              description="New and chat-accepted offers will appear here for final sale approval."
+            />
+          ) : (
+            <div className="mt-5 grid gap-4 xl:grid-cols-2">
+              {pendingDashboardOffers.map((offer) => (
+                <OfferApprovalCard
+                  key={offer.id}
+                  offer={offer}
+                  product={offer.product}
+                  loadingAction={saleActionLoading[offer.id]}
+                  onAccept={handleAcceptSale}
+                  onReject={handleRejectSale}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
         <section className="mb-6 grid gap-6 lg:grid-cols-[1fr_380px]">
           <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1042,11 +1448,11 @@ function Dashboard() {
               </h2>
 
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                Sales and recent offer activity
+                Completed sales and manual sold listings
               </p>
 
               {loading ? (
-                <div className="mt-5 max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                <div className="sellify-scroll mt-5 max-h-[420px] space-y-3 overflow-y-auto pr-1">
                   {[1, 2, 3].map((item) => (
                     <div
                       key={item}
@@ -1058,10 +1464,10 @@ function Dashboard() {
                 <EmptyState
                   compact
                   title="No orders yet"
-                  description="Accepted offers and sold listings will appear here."
+                  description="Dashboard-approved offers and sold listings will appear here."
                 />
               ) : (
-                <div className="mt-5 space-y-3">
+                <div className="sellify-scroll mt-5 max-h-[420px] space-y-3 overflow-y-auto pr-1">
                   {orderOverview.map((order) => (
                     <Link
                       key={order.id}
@@ -1130,6 +1536,120 @@ function Dashboard() {
         />
       )}
     </main>
+  );
+}
+
+function OfferApprovalCard({
+  offer,
+  product,
+  loadingAction,
+  onAccept,
+  onReject,
+}) {
+  const originalPrice = Number(offer.productPrice ?? product?.price) || 0;
+  const offeredAmount = Number(offer.lastOfferAmount) || 0;
+  const stock = product ? getListingStock(product) : 0;
+  const productMissing = !product;
+  const canAccept = !productMissing && stock > 0 && !loadingAction;
+  const image =
+    offer.productImage ||
+    (product
+      ? getListingImage(product)
+      : "https://placehold.co/800x600?text=Sellify");
+
+  return (
+    <article className="grid min-w-0 gap-4 rounded-[1.5rem] border border-slate-200 p-4 transition hover:border-green-200 sm:grid-cols-[120px_1fr]">
+      <div className="relative overflow-hidden rounded-2xl bg-slate-100">
+        <img
+          src={image}
+          alt={offer.productTitle || product?.title || "Offer listing"}
+          className="h-40 w-full object-cover sm:h-full"
+        />
+
+        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-[11px] font-black text-green-700 shadow-sm">
+          {getOfferStatusLabel(offer)}
+        </span>
+      </div>
+
+      <div className="min-w-0">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <h3 className="line-clamp-2 text-xl font-black text-slate-950">
+              {offer.productTitle || product?.title || "Listing offer"}
+            </h3>
+
+            <p className="mt-1 break-words text-sm font-semibold text-slate-500">
+              Buyer: {getBuyerLabel(offer)}
+            </p>
+
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              {productMissing
+                ? "Listing not found"
+                : `${stock} in stock`}
+            </p>
+          </div>
+
+          <Link
+            to={`/chat/${offer.id}`}
+            className="inline-flex w-fit items-center justify-center rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-200"
+          >
+            View chat
+          </Link>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl bg-slate-50 p-4">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+              Original price
+            </p>
+
+            <p className="mt-1 text-xl font-black text-slate-900">
+              {formatListingPrice(originalPrice)}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-green-50 p-4">
+            <p className="text-xs font-black uppercase tracking-wide text-green-700">
+              Offered amount
+            </p>
+
+            <p className="mt-1 text-xl font-black text-green-700">
+              {formatListingPrice(offeredAmount)}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            disabled={!canAccept}
+            onClick={() => onAccept(offer)}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-green-600 px-4 py-3 text-sm font-black text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loadingAction === "accept" ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <CheckCircle2 size={16} />
+            )}
+            Accept sale
+          </button>
+
+          <button
+            type="button"
+            disabled={Boolean(loadingAction)}
+            onClick={() => onReject(offer)}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loadingAction === "reject" ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <X size={16} />
+            )}
+            Reject sale
+          </button>
+        </div>
+      </div>
+    </article>
   );
 }
 

@@ -49,16 +49,6 @@ export function getFinalSaleUnitPrice(product) {
 
 export function getSalesTotal(product) {
   const unitsSold = getUnitsSold(product);
-  const hasFinalSalePrice =
-    product?.finalSoldPrice !== undefined ||
-    product?.finalSaleUnitPrice !== undefined ||
-    product?.soldPrice !== undefined ||
-    product?.acceptedOfferAmount !== undefined;
-
-  if (hasFinalSalePrice && unitsSold > 0) {
-    return Math.max(0, getFinalSaleUnitPrice(product) * unitsSold);
-  }
-
   const salesTotal = Number(product?.salesTotal ?? product?.saleTotal);
 
   if (Number.isFinite(salesTotal)) {

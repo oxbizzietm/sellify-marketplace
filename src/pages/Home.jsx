@@ -158,12 +158,12 @@ function Home() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-white">
-      <section className="px-4 pt-4 sm:px-6 sm:pt-6">
-        <div className="relative overflow-hidden rounded-[1.5rem] bg-gradient-to-r from-green-50 via-white to-green-100 shadow-sm sm:rounded-[2rem] lg:min-h-[430px]">
+      <section className="px-3 pt-3 sm:px-6 sm:pt-6">
+        <div className="relative overflow-hidden rounded-[1.25rem] bg-gradient-to-r from-green-50 via-white to-green-100 shadow-sm sm:rounded-[2rem] lg:min-h-[430px]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_30%,rgba(22,163,74,0.18),transparent_35%)]" />
 
           <div className="relative z-10 grid grid-cols-1 lg:min-h-[430px] lg:grid-cols-2">
-            <div className="relative h-52 overflow-hidden sm:h-64 lg:hidden">
+            <div className="relative h-48 overflow-hidden sm:h-64 lg:hidden">
               {heroSlides.map((item, index) => (
                 <img
                   key={`mobile-${item.image}`}
@@ -194,7 +194,7 @@ function Home() {
               </button>
             </div>
 
-            <div className="flex min-w-0 flex-col justify-center px-5 py-10 transition-all duration-700 ease-out sm:px-8 sm:py-12 lg:px-10">
+            <div className="flex min-w-0 flex-col justify-center px-5 py-8 transition-all duration-700 ease-out sm:px-8 sm:py-12 lg:px-10">
               <span
                 key={slide.tag}
                 className="mb-5 w-fit rounded-xl bg-green-100 px-4 py-2 text-sm font-black text-green-700 animate-[fadeIn_0.7s_ease-out]"
@@ -204,29 +204,29 @@ function Home() {
 
               <h1
                 key={slide.title}
-                className="max-w-2xl text-4xl font-black leading-tight tracking-tight text-black animate-[slideUp_0.7s_ease-out] sm:text-5xl lg:text-6xl"
+                className="max-w-2xl text-3xl font-black leading-tight tracking-tight text-black animate-[slideUp_0.7s_ease-out] sm:text-5xl lg:text-6xl"
               >
                 {renderTitle(slide.title, slide.highlight)}
               </h1>
 
               <p
                 key={slide.description}
-                className="mt-5 max-w-xl text-lg leading-8 text-gray-700 animate-[fadeIn_0.9s_ease-out]"
+                className="mt-4 max-w-xl text-base leading-7 text-gray-700 animate-[fadeIn_0.9s_ease-out] sm:mt-5 sm:text-lg sm:leading-8"
               >
                 {slide.description}
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-4">
+              <div className="mt-6 flex flex-wrap gap-3 sm:mt-8 sm:gap-4">
                 <button
                   onClick={() => navigate("/browse")}
-                  className="w-full rounded-xl bg-green-600 px-8 py-4 text-base font-black text-white shadow-sm transition hover:bg-green-700 sm:w-auto"
+                  className="w-full rounded-xl bg-green-600 px-6 py-3.5 text-sm font-black text-white shadow-sm transition hover:bg-green-700 sm:w-auto sm:px-8 sm:py-4 sm:text-base"
                 >
                   Browse Products
                 </button>
 
                 <button
                   onClick={() => navigate("/sell")}
-                  className="w-full rounded-xl border border-green-600 bg-white px-8 py-4 text-base font-black text-green-700 shadow-sm transition hover:bg-green-50 sm:w-auto"
+                  className="w-full rounded-xl border border-green-600 bg-white px-6 py-3.5 text-sm font-black text-green-700 shadow-sm transition hover:bg-green-50 sm:w-auto sm:px-8 sm:py-4 sm:text-base"
                 >
                   Sell an Item
                 </button>
@@ -302,9 +302,11 @@ function Home() {
         `}
       </style>
 
-      <section className="px-4 py-8 sm:px-6">
+      <section className="px-3 py-6 sm:px-6 sm:py-8">
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-black text-black">Featured Listings</h2>
+          <h2 className="text-xl font-black text-black sm:text-2xl">
+            Featured Listings
+          </h2>
 
           <button
             onClick={() => navigate("/browse")}
@@ -315,11 +317,11 @@ function Home() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
             {[1, 2, 3, 4, 5].map((item) => (
               <div
                 key={item}
-                className="h-64 animate-pulse rounded-2xl bg-gray-100 sm:h-80 sm:rounded-3xl"
+                className="h-56 animate-pulse rounded-2xl bg-gray-100 sm:h-80 sm:rounded-3xl"
               />
             ))}
           </div>
@@ -341,7 +343,7 @@ function Home() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} compact />
             ))}
