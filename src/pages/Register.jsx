@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  db,
-} from "../firebase/firebase";
+import { db } from "../firebase/firebase";
 
 import {
   doc,
@@ -30,6 +28,8 @@ function Register() {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    if (loading) return;
+
     try {
       setError("");
       setLoading(true);
@@ -43,7 +43,6 @@ function Register() {
 
       if (!usernameSnap.empty) {
         setError("Username is already taken.");
-        setLoading(false);
         return;
       }
 
@@ -61,9 +60,9 @@ function Register() {
       navigate("/");
     } catch {
       setError("Failed to create account.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (
@@ -199,7 +198,7 @@ function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-2xl bg-green-600 py-4 text-lg font-black text-white transition hover:bg-green-700 disabled:opacity-60"
+            className="w-full rounded-2xl bg-green-600 py-4 text-lg font-black text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Creating account..." : "Create Account"}
           </button>

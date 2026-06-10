@@ -211,8 +211,12 @@ function Chat() {
   const [openCounterOfferId, setOpenCounterOfferId] = useState(null);
   const [offerActionLoading, setOfferActionLoading] = useState({});
   const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messageSending, setMessageSending] = useState(false);
+  const [error, setError] = useState("");
 
   const messagesEndRef = useRef(null);
+  const activeChatIdRef = useRef("");
   const typingTimeoutRef = useRef(null);
   const offerActionLocksRef = useRef({});
   const presenceUserKey = presenceUserIds.join("|");
@@ -228,55 +232,76 @@ function Chat() {
       orderBy("updatedAt", "desc")
     );
 
-    const unsubscribe = onSnapshot(chatsQuery, async (snapshot) => {
-      const allChats = snapshot.docs
-        .map((item) => ({
-          id: item.id,
-          ...item.data(),
-        }))
-        .filter((chat) => chat.participants?.includes(currentUser.uid));
+    const unsubscribe = onSnapshot(
+      chatsQuery,
+      async (snapshot) => {
+        try {
+          const allChats = snapshot.docs
+            .map((item) => ({
+              id: item.id,
+              ...item.data(),
+            }))
+            .filter((chat) => chat.participants?.includes(currentUser.uid));
 
-      const users = new Set();
-      const productIds = new Set();
+          const users = new Set();
+          const productIds = new Set();
 
-      allChats.forEach((chat) => {
-        chat.participants?.forEach((id) => {
-          if (id !== currentUser.uid) users.add(id);
-        });
+          allChats.forEach((chat) => {
+            chat.participants?.forEach((id) => {
+              if (id !== currentUser.uid) users.add(id);
+            });
 
-        if (chat.productId) productIds.add(chat.productId);
-      });
+            if (chat.productId) productIds.add(chat.productId);
+          });
 
-      const soldMap = {};
+          const soldMap = {};
 
-      await Promise.all(
-        [...productIds].map(async (productId) => {
-          const snap = await getDoc(doc(db, "products", productId));
-          soldMap[productId] = snap.exists()
-            ? snap.data().sold === true
-            : true;
-        })
-      );
+          await Promise.all(
+            [...productIds].map(async (productId) => {
+              const snap = await getDoc(doc(db, "products", productId));
+              soldMap[productId] = snap.exists()
+                ? snap.data().sold === true
+                : true;
+            })
+          );
 
-      setPresenceUserIds([...users].sort());
-      setProductSoldMap(soldMap);
+          setPresenceUserIds([...users].sort());
+          setProductSoldMap(soldMap);
 
-      const syncedChats = allChats.map((chat) => ({
-        ...chat,
-        productSold:
-          soldMap[chat.productId] === true || chat.productSold === true,
-      }));
+          const syncedChats = allChats.map((chat) => ({
+            ...chat,
+            productSold:
+              soldMap[chat.productId] === true || chat.productSold === true,
+          }));
 
-      setChats(syncedChats);
+          setChats(syncedChats);
 
-      if (chatId) {
-        setActiveChat(syncedChats.find((chat) => chat.id === chatId) || null);
-      } else {
-        setActiveChat(null);
+          const nextActiveChat = chatId
+            ? syncedChats.find((chat) => chat.id === chatId) || null
+            : null;
+          const nextActiveChatId = nextActiveChat?.id || "";
+
+          if (activeChatIdRef.current !== nextActiveChatId) {
+            activeChatIdRef.current = nextActiveChatId;
+            setMessages([]);
+            setMessagesLoading(Boolean(nextActiveChatId));
+          }
+
+          setActiveChat(nextActiveChat);
+          setError("");
+          setLoading(false);
+        } catch (err) {
+          console.error("Chat load error:", err);
+          setError("We could not load your chats. Please refresh and try again.");
+          setLoading(false);
+        }
+      },
+      (err) => {
+        console.error("Chat subscription error:", err);
+        setError("We could not load your chats. Please refresh and try again.");
+        setLoading(false);
       }
-
-      setLoading(false);
-    });
+    );
 
     return () => unsubscribe();
   }, [currentUser, chatId, navigate]);
@@ -346,37 +371,53 @@ function Chat() {
       orderBy("createdAt", "asc")
     );
 
-    const unsubscribeMessages = onSnapshot(messagesQuery, async (snapshot) => {
-      const allMessages = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
-      }));
+    const unsubscribeMessages = onSnapshot(
+      messagesQuery,
+      async (snapshot) => {
+        try {
+          const allMessages = snapshot.docs.map((item) => ({
+            id: item.id,
+            ...item.data(),
+          }));
 
-      setMessages(allMessages);
+          setMessages(allMessages);
 
-      const unreadMessages = snapshot.docs.filter((item) => {
-        const data = item.data();
-        return data.senderId !== currentUser.uid && data.read !== true;
-      });
+          const unreadMessages = snapshot.docs.filter((item) => {
+            const data = item.data();
+            return data.senderId !== currentUser.uid && data.read !== true;
+          });
 
-      if (unreadMessages.length > 0) {
-        const batch = writeBatch(db);
+          if (unreadMessages.length > 0) {
+            const batch = writeBatch(db);
 
-        unreadMessages.forEach((item) => {
-          batch.update(item.ref, { read: true });
-        });
+            unreadMessages.forEach((item) => {
+              batch.update(item.ref, { read: true });
+            });
 
-        batch.update(doc(db, "chats", activeChat.id), {
-          [`unreadCounts.${currentUser.uid}`]: 0,
-        });
+            batch.update(doc(db, "chats", activeChat.id), {
+              [`unreadCounts.${currentUser.uid}`]: 0,
+            });
 
-        await batch.commit();
+            await batch.commit();
+          }
+
+          setMessagesLoading(false);
+
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          }, 80);
+        } catch (err) {
+          console.error("Message load error:", err);
+          setError("Messages loaded, but read status could not be updated.");
+          setMessagesLoading(false);
+        }
+      },
+      (err) => {
+        console.error("Message subscription error:", err);
+        setError("We could not load messages for this chat. Please try again.");
+        setMessagesLoading(false);
       }
-
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 80);
-    });
+    );
 
     const unsubscribeTyping = onSnapshot(
       doc(db, "chats", activeChat.id),
@@ -446,7 +487,7 @@ function Chat() {
   async function handleSend(e) {
     e.preventDefault();
 
-    if (!message.trim() || !activeChat || !currentUser) return;
+    if (messageSending || !message.trim() || !activeChat || !currentUser) return;
 
     const chatIsSold =
       activeChat.productSold === true ||
@@ -460,39 +501,60 @@ function Chat() {
       (id) => id !== currentUser.uid
     );
 
+    if (!receiverId) {
+      setError("This chat is missing a receiver. Please reopen the conversation.");
+      return;
+    }
+
     const receiverUnread = activeChat.unreadCounts?.[receiverId] || 0;
 
-    await addDoc(collection(db, "chats", activeChat.id, "messages"), {
-      text,
-      senderId: currentUser.uid,
-      receiverId,
-      read: false,
-      createdAt: serverTimestamp(),
-    });
+    try {
+      setError("");
+      setMessageSending(true);
 
-    await updateDoc(doc(db, "chats", activeChat.id), {
-      lastMessage: text,
-      lastSenderId: currentUser.uid,
-      updatedAt: serverTimestamp(),
-      [`unreadCounts.${receiverId}`]: receiverUnread + 1,
-      [`deletedFor.${receiverId}`]: false,
-      [`spamFor.${receiverId}`]: false,
-    });
+      await addDoc(collection(db, "chats", activeChat.id, "messages"), {
+        text,
+        senderId: currentUser.uid,
+        receiverId,
+        read: false,
+        createdAt: serverTimestamp(),
+      });
 
-    await addDoc(collection(db, "users", receiverId, "alerts"), {
-      type: "chat",
-      title: "New message",
-      message: text.length > 70 ? `${text.slice(0, 70)}...` : text,
-      chatId: activeChat.id,
-      productId: activeChat.productId || "",
-      productTitle: activeChat.productTitle || "",
-      senderId: currentUser.uid,
-      read: false,
-      createdAt: serverTimestamp(),
-    });
+      await updateDoc(doc(db, "chats", activeChat.id), {
+        lastMessage: text,
+        lastSenderId: currentUser.uid,
+        updatedAt: serverTimestamp(),
+        [`unreadCounts.${receiverId}`]: receiverUnread + 1,
+        [`deletedFor.${receiverId}`]: false,
+        [`spamFor.${receiverId}`]: false,
+      });
 
-    setMessage("");
-    await stopTyping();
+      try {
+        await addDoc(collection(db, "users", receiverId, "alerts"), {
+          type: "chat",
+          title: "New message",
+          message: text.length > 70 ? `${text.slice(0, 70)}...` : text,
+          chatId: activeChat.id,
+          productId: activeChat.productId || "",
+          productTitle: activeChat.productTitle || "",
+          senderId: currentUser.uid,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error("Chat alert creation error:", err);
+      }
+
+      setMessage("");
+      await stopTyping();
+    } catch (err) {
+      console.error("Message send error:", err);
+      setError(
+        "Your message could not be sent. Please check your connection and try again."
+      );
+    } finally {
+      setMessageSending(false);
+    }
   }
 
   async function runLockedOfferAction(key, action) {
@@ -1071,6 +1133,12 @@ function Chat() {
         `}
       </style>
 
+      {error && (
+        <div className="mx-auto mb-3 max-w-7xl rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-600">
+          {error}
+        </div>
+      )}
+
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 overflow-hidden rounded-2xl bg-white shadow-xl lg:grid lg:h-full lg:grid-cols-[390px_1fr] lg:gap-0 lg:rounded-[1.7rem]">
         <aside
           className={`${chatListOrderClass} flex max-h-[70vh] min-h-[360px] min-w-0 flex-col border-b border-slate-200 bg-white lg:order-none lg:h-full lg:max-h-none lg:min-h-0 lg:border-b-0 lg:border-r`}
@@ -1419,53 +1487,65 @@ function Chat() {
                   </div>
                 )}
 
-                <div className="space-y-5">
-                  {messages.map((msg, index) => {
-                    const isMe = msg.senderId === currentUser.uid;
-                    const currentDay = formatMessageDay(msg.createdAt);
-                    const previousDay =
-                      index > 0
-                        ? formatMessageDay(messages[index - 1].createdAt)
-                        : null;
+                {messagesLoading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-500 shadow-sm">
+                      <Loader2
+                        size={18}
+                        className="animate-spin text-green-600"
+                      />
+                      Loading messages...
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+                    {messages.map((msg, index) => {
+                      const isMe = msg.senderId === currentUser.uid;
+                      const currentDay = formatMessageDay(msg.createdAt);
+                      const previousDay =
+                        index > 0
+                          ? formatMessageDay(messages[index - 1].createdAt)
+                          : null;
 
-                    const showDate = currentDay && currentDay !== previousDay;
+                      const showDate = currentDay && currentDay !== previousDay;
 
-                    return (
-                      <div key={msg.id}>
-                        {showDate && (
-                          <div className="my-6 flex justify-center">
-                            <span className="rounded-full bg-[#dce8ee] px-4 py-1 text-sm font-semibold text-slate-500">
-                              {currentDay}
-                            </span>
-                          </div>
-                        )}
-
-                        <div
-                          className={`flex ${
-                            isMe ? "justify-end" : "justify-start"
-                          }`}
-                        >
-                          {msg.type === "offer" ? (
-                            renderOfferMessage(msg, isMe)
-                          ) : (
-                            <div
-                              className={`max-w-[85%] break-words rounded-2xl px-4 py-3 text-sm shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md sm:max-w-[360px] ${
-                                isMe
-                                  ? "rounded-br-md bg-green-200 text-slate-900"
-                                  : "rounded-bl-md bg-white text-slate-900"
-                              }`}
-                            >
-                              <p className="whitespace-pre-wrap">{msg.text}</p>
-                              {renderMessageMeta(msg, isMe)}
+                      return (
+                        <div key={msg.id}>
+                          {showDate && (
+                            <div className="my-6 flex justify-center">
+                              <span className="rounded-full bg-[#dce8ee] px-4 py-1 text-sm font-semibold text-slate-500">
+                                {currentDay}
+                              </span>
                             </div>
                           )}
-                        </div>
-                      </div>
-                    );
-                  })}
 
-                  <div ref={messagesEndRef} />
-                </div>
+                          <div
+                            className={`flex ${
+                              isMe ? "justify-end" : "justify-start"
+                            }`}
+                          >
+                            {msg.type === "offer" ? (
+                              renderOfferMessage(msg, isMe)
+                            ) : (
+                              <div
+                                className={`max-w-[85%] break-words rounded-2xl px-4 py-3 text-sm shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md sm:max-w-[360px] ${
+                                  isMe
+                                    ? "rounded-br-md bg-green-200 text-slate-900"
+                                    : "rounded-bl-md bg-white text-slate-900"
+                                }`}
+                              >
+                                <p className="whitespace-pre-wrap">{msg.text}</p>
+                                {renderMessageMeta(msg, isMe)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
               </div>
 
               <div className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 sm:px-5">
@@ -1537,7 +1617,8 @@ function Chat() {
                           key={item}
                           type="button"
                           onClick={() => handleTyping(item)}
-                          className="rounded-lg border border-green-600 px-3 py-1.5 text-xs font-black text-green-600 hover:bg-green-50"
+                          disabled={messageSending}
+                          className="rounded-lg border border-green-600 px-3 py-1.5 text-xs font-black text-green-600 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {item}
                         </button>
@@ -1555,13 +1636,19 @@ function Chat() {
                         value={message}
                         onChange={(e) => handleTyping(e.target.value)}
                         onBlur={stopTyping}
+                        disabled={messageSending}
                       />
 
                       <button
                         type="submit"
-                        className="grid h-11 w-11 place-items-center rounded-full bg-green-600 text-white hover:bg-green-700"
+                        disabled={messageSending || !message.trim()}
+                        className="grid h-11 w-11 place-items-center rounded-full bg-green-600 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <Send size={19} />
+                        {messageSending ? (
+                          <Loader2 size={19} className="animate-spin" />
+                        ) : (
+                          <Send size={19} />
+                        )}
                       </button>
                     </form>
                   </>

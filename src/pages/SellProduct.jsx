@@ -117,6 +117,8 @@ function SellProduct() {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    if (loading) return;
+
     if (!currentUser) {
       setError("You must be logged in.");
       return;
@@ -153,10 +155,12 @@ function SellProduct() {
       navigate("/browse");
     } catch (err) {
       console.error(err);
-      setError("Failed to post listing.");
+      setError(
+        "Failed to post listing. Please check your connection and try again."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   function renderCategoryFields() {
@@ -366,6 +370,7 @@ function SellProduct() {
                   id="imageUpload"
                   className="hidden"
                   onChange={handleImageChange}
+                  disabled={loading}
                 />
 
                 <label
@@ -410,6 +415,7 @@ function SellProduct() {
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
+                        disabled={loading}
                         className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-red-500 text-sm font-black text-white shadow"
                       >
                         ×
@@ -429,7 +435,7 @@ function SellProduct() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-2xl bg-green-600 py-4 text-lg font-black text-white transition hover:bg-green-700 disabled:opacity-60"
+              className="w-full rounded-2xl bg-green-600 py-4 text-lg font-black text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Posting listing..." : "Post listing"}
             </button>

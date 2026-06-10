@@ -512,26 +512,32 @@ function Dashboard() {
     );
   }
 
+  function showDashboardError(message) {
+    setError(message);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function handleAcceptSale(offer) {
     if (!offer?.id || saleActionLoading[offer.id]) return;
 
     const offerAmount = Number(offer.lastOfferAmount);
 
     if (!offer.productId) {
-      window.alert("This offer is missing its listing reference.");
+      showDashboardError("This offer is missing its listing reference.");
       return;
     }
 
     if (!Number.isFinite(offerAmount) || offerAmount <= 0) {
-      window.alert("This offer does not have a valid amount.");
+      showDashboardError("This offer does not have a valid amount.");
       return;
     }
 
     if (!productById[offer.productId]) {
-      window.alert("This listing could not be found.");
+      showDashboardError("This listing could not be found.");
       return;
     }
 
+    setError("");
     setSaleActionLoading((current) => ({
       ...current,
       [offer.id]: "accept",
@@ -755,9 +761,9 @@ function Dashboard() {
       console.error("Accept sale error:", err);
 
       if (err.message === "NO_STOCK") {
-        window.alert("This listing has no stock left to sell.");
+        showDashboardError("This listing has no stock left to sell.");
       } else {
-        window.alert("Failed to accept this sale. Please try again.");
+        showDashboardError("Failed to accept this sale. Please try again.");
       }
     } finally {
       setSaleActionLoading((current) => {
@@ -771,6 +777,7 @@ function Dashboard() {
   async function handleRejectSale(offer) {
     if (!offer?.id || saleActionLoading[offer.id]) return;
 
+    setError("");
     setSaleActionLoading((current) => ({
       ...current,
       [offer.id]: "reject",
@@ -817,7 +824,7 @@ function Dashboard() {
       });
     } catch (err) {
       console.error("Reject sale error:", err);
-      window.alert("Failed to reject this sale. Please try again.");
+      showDashboardError("Failed to reject this sale. Please try again.");
     } finally {
       setSaleActionLoading((current) => {
         const next = { ...current };
@@ -835,6 +842,7 @@ function Dashboard() {
     if (!confirmDelete) return;
 
     try {
+      setError("");
       setSavingProductId(product.id);
       await deleteDoc(doc(db, "products", product.id));
 
@@ -843,7 +851,7 @@ function Dashboard() {
       );
     } catch (err) {
       console.error("Error deleting listing:", err);
-      window.alert("Failed to delete listing. Please try again.");
+      showDashboardError("Failed to delete listing. Please try again.");
     } finally {
       setSavingProductId("");
     }
@@ -861,6 +869,7 @@ function Dashboard() {
     if (!confirmDelete) return;
 
     try {
+      setError("");
       setDeletingActiveListings(true);
 
       const productsQuery = query(
@@ -893,7 +902,7 @@ function Dashboard() {
       window.alert(`${activeProductDocs.length} active listings deleted.`);
     } catch (err) {
       console.error("Error deleting active listings:", err);
-      window.alert("Failed to delete active listings. Please try again.");
+      showDashboardError("Failed to delete active listings. Please try again.");
     } finally {
       setDeletingActiveListings(false);
     }
@@ -913,7 +922,7 @@ function Dashboard() {
 
     if (nextStatus === "sold" && !wasSold) {
       if (currentStock <= 0) {
-        window.alert("This listing has no stock left to mark as sold.");
+        showDashboardError("This listing has no stock left to mark as sold.");
         return;
       }
 
@@ -934,7 +943,9 @@ function Dashboard() {
           soldQuantity < 1 ||
           soldQuantity > currentStock
         ) {
-          window.alert(`Please enter a quantity from 1 to ${currentStock}.`);
+          showDashboardError(
+            `Please enter a quantity from 1 to ${currentStock}.`
+          );
           return;
         }
       }
@@ -985,6 +996,7 @@ function Dashboard() {
     }
 
     try {
+      setError("");
       setSavingProductId(product.id);
       await updateDoc(doc(db, "products", product.id), updateData);
 
@@ -1017,7 +1029,7 @@ function Dashboard() {
       });
     } catch (err) {
       console.error("Error updating listing status:", err);
-      window.alert("Failed to update listing status.");
+      showDashboardError("Failed to update listing status.");
     } finally {
       setSavingProductId("");
     }
@@ -1027,6 +1039,7 @@ function Dashboard() {
     const nextStock = Math.max(0, Math.round(Number(nextStockValue) || 0));
 
     try {
+      setError("");
       setSavingProductId(product.id);
       await updateDoc(doc(db, "products", product.id), {
         stock: nextStock,
@@ -1040,7 +1053,7 @@ function Dashboard() {
       });
     } catch (err) {
       console.error("Error updating stock:", err);
-      window.alert("Failed to update stock.");
+      showDashboardError("Failed to update stock.");
     } finally {
       setSavingProductId("");
     }
@@ -1069,7 +1082,7 @@ function Dashboard() {
     if (!editingProduct || !editForm) return;
 
     if (!editForm.title.trim()) {
-      window.alert("Please enter a listing title.");
+      showDashboardError("Please enter a listing title.");
       return;
     }
 
@@ -1088,7 +1101,7 @@ function Dashboard() {
 
     if (editForm.listingStatus === "sold" && !wasSold) {
       if (availableStock <= 0) {
-        window.alert("This listing has no stock left to mark as sold.");
+        showDashboardError("This listing has no stock left to mark as sold.");
         return;
       }
 
@@ -1109,7 +1122,9 @@ function Dashboard() {
           soldQuantity < 1 ||
           soldQuantity > availableStock
         ) {
-          window.alert(`Please enter a quantity from 1 to ${availableStock}.`);
+          showDashboardError(
+            `Please enter a quantity from 1 to ${availableStock}.`
+          );
           return;
         }
       }
@@ -1181,6 +1196,7 @@ function Dashboard() {
     }
 
     try {
+      setError("");
       setSavingProductId(editingProduct.id);
       await updateDoc(doc(db, "products", editingProduct.id), updateData);
 
@@ -1214,7 +1230,7 @@ function Dashboard() {
       closeEdit();
     } catch (err) {
       console.error("Error saving listing:", err);
-      window.alert("Failed to save listing.");
+      showDashboardError("Failed to save listing.");
     } finally {
       setSavingProductId("");
     }

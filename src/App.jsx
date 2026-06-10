@@ -17,6 +17,8 @@ import NotFound from "./pages/NotFound";
 import Chat from "./pages/Chat";
 import Favorites from "./pages/Favorites";
 import Alerts from "./pages/Alerts";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 
 function App() {
   return (
@@ -41,6 +43,8 @@ function App() {
 
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/alerts" element={<Alerts />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

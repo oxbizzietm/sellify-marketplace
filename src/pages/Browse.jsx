@@ -99,6 +99,7 @@ function Browse() {
 function BrowseListings({ initialSearch, initialCategory }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState(initialSearch);
   const [category, setCategory] = useState(initialCategory);
   const [locationFilter, setLocationFilter] = useState("All");
@@ -112,6 +113,9 @@ function BrowseListings({ initialSearch, initialCategory }) {
   useEffect(() => {
     async function fetchProducts() {
       try {
+        setLoading(true);
+        setError("");
+
         const q = query(
           collection(db, "products"),
           orderBy("createdAt", "desc")
@@ -127,11 +131,14 @@ function BrowseListings({ initialSearch, initialCategory }) {
           .filter(isPublicListing);
 
         setProducts(activeProducts);
-      } catch (error) {
-        console.error("Error fetching products:", error);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setError(
+          "We could not load products right now. Please refresh the page or try again shortly."
+        );
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
     fetchProducts();
@@ -442,6 +449,12 @@ function BrowseListings({ initialSearch, initialCategory }) {
           </p>
         </div>
 
+        {error && !loading && (
+          <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-600">
+            {error}
+          </div>
+        )}
+
         {loading ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {Array.from({ length: 12 }, (_, index) => (
@@ -450,6 +463,16 @@ function BrowseListings({ initialSearch, initialCategory }) {
                 className="h-[430px] animate-pulse rounded-[1.7rem] bg-slate-200"
               />
             ))}
+          </div>
+        ) : error ? (
+          <div className="rounded-[2rem] border border-dashed border-red-200 bg-white px-6 py-20 text-center">
+            <h2 className="text-3xl font-black text-slate-900">
+              Products could not be loaded
+            </h2>
+
+            <p className="mx-auto mt-3 max-w-md text-slate-500">
+              Check your connection and refresh Sellify to try again.
+            </p>
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white px-6 py-20 text-center">

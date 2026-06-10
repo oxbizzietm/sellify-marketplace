@@ -14,6 +14,8 @@ function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    if (loading) return;
+
     try {
       setError("");
       setLoading(true);
@@ -23,9 +25,9 @@ function Login() {
       navigate("/");
     } catch {
       setError("Failed to log in. Check your email and password.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (
@@ -99,7 +101,7 @@ function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-2xl bg-green-600 py-4 text-lg font-black text-white transition hover:bg-green-700 disabled:opacity-60"
+            className="w-full rounded-2xl bg-green-600 py-4 text-lg font-black text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
