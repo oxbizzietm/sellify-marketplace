@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import {
   onDisconnect,
   onValue,
@@ -18,6 +18,10 @@ import { AuthContext } from "./AuthContext";
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [userRole, setUserRole] = useState("user");
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [roleError, setRoleError] = useState("");
   const [loading, setLoading] = useState(true);
 
   function register(email, password) {
@@ -55,16 +59,32 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
 
+      if (!user) {
+        setUserData(null);
+        setUserRole("user");
+        setRoleError("");
+        setRoleLoading(false);
+        setLoading(false);
+        return;
+      }
+
+      setRoleLoading(true);
+
       if (user) {
-        await setDoc(
-          doc(db, "users", user.uid),
-          {
-            online: true,
-            lastActiveAt: serverTimestamp(),
-            email: user.email,
-          },
-          { merge: true }
-        );
+        try {
+          await setDoc(
+            doc(db, "users", user.uid),
+            {
+              online: true,
+              lastActiveAt: serverTimestamp(),
+              email: user.email,
+            },
+            { merge: true }
+          );
+        } catch (err) {
+          console.error("Auth user sync error:", err);
+          setRoleError("We could not sync your account profile.");
+        }
       }
 
       setLoading(false);
@@ -72,6 +92,34 @@ export function AuthProvider({ children }) {
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const userRef = doc(db, "users", currentUser.uid);
+
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snapshot) => {
+        const data = snapshot.exists() ? snapshot.data() : {};
+        const role = data.role === "admin" ? "admin" : "user";
+
+        setUserData(data);
+        setUserRole(role);
+        setRoleError("");
+        setRoleLoading(false);
+      },
+      (err) => {
+        console.error("User role fetch error:", err);
+        setUserData(null);
+        setUserRole("user");
+        setRoleError("We could not load your account role.");
+        setRoleLoading(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -171,6 +219,12 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
+    userData,
+    userRole,
+    roleLoading,
+    roleError,
+    isAdmin: Boolean(currentUser && userRole === "admin"),
+    isMarketplaceUser: Boolean(currentUser && userRole === "user"),
     register,
     login,
     logout,

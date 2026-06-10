@@ -4,9 +4,11 @@ import {
   Search,
   Bell,
   Heart,
+  LogOut,
   Menu,
   MessageCircle,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
@@ -15,7 +17,7 @@ import { collection, doc, onSnapshot } from "firebase/firestore";
 import { LISTING_CATEGORIES } from "../utils/categories";
 
 function Navbar() {
-  const { currentUser } = useAuth();
+  const { currentUser, userRole, roleLoading, logout } = useAuth();
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState({
@@ -24,16 +26,18 @@ function Navbar() {
     name: "",
     username: "",
   });
+
   const [showCategories, setShowCategories] = useState(false);
   const categoriesRef = useRef(null);
 
   const [chatCount, setChatCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
 
+  const isAdmin = Boolean(currentUser && userRole === "admin");
+  const roleIsLoading = Boolean(currentUser && roleLoading);
+
   useEffect(() => {
-    if (!currentUser) {
-      return;
-    }
+    if (!currentUser) return;
 
     const userId = currentUser.uid;
 
@@ -67,13 +71,9 @@ function Navbar() {
     return unsubscribe;
   }, [currentUser]);
 
-  const activeProfile = currentUser?.uid === profile.uid ? profile : null;
-  const profilePhoto = activeProfile?.photoUrl || currentUser?.photoURL || "";
-  const profileName = activeProfile?.name || currentUser?.displayName || "";
-  const profileUsername = activeProfile?.username || "";
-
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || isAdmin || roleLoading) {
+      setChatCount(0);
       return;
     }
 
@@ -99,7 +99,30 @@ function Navbar() {
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, isAdmin, roleLoading]);
+
+  useEffect(() => {
+    if (!currentUser || isAdmin || roleLoading) {
+      setAlertCount(0);
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      collection(db, "users", currentUser.uid, "alerts"),
+      (snapshot) => {
+        const unreadAlerts = snapshot.docs
+          .map((item) => ({
+            id: item.id,
+            ...item.data(),
+          }))
+          .filter((alert) => alert.read !== true);
+
+        setAlertCount(unreadAlerts.length);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentUser, isAdmin, roleLoading]);
 
   useEffect(() => {
     if (!showCategories) return;
@@ -128,27 +151,10 @@ function Navbar() {
     };
   }, [showCategories]);
 
-  useEffect(() => {
-    if (!currentUser) {
-      return;
-    }
-
-    const unsubscribe = onSnapshot(
-      collection(db, "users", currentUser.uid, "alerts"),
-      (snapshot) => {
-        const unreadAlerts = snapshot.docs
-          .map((item) => ({
-            id: item.id,
-            ...item.data(),
-          }))
-          .filter((alert) => alert.read !== true);
-
-        setAlertCount(unreadAlerts.length);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [currentUser]);
+  const activeProfile = currentUser?.uid === profile.uid ? profile : null;
+  const profilePhoto = activeProfile?.photoUrl || currentUser?.photoURL || "";
+  const profileName = activeProfile?.name || currentUser?.displayName || "";
+  const profileUsername = activeProfile?.username || "";
 
   const avatarInitial =
     profileUsername?.charAt(0)?.toUpperCase() ||
@@ -167,6 +173,113 @@ function Navbar() {
   function goToCategory(category) {
     setShowCategories(false);
     navigate(`/browse?category=${encodeURIComponent(category)}`);
+  }
+
+  async function handleLogout() {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (err) {
+      console.error("Navbar logout error:", err);
+    }
+  }
+
+  if (roleIsLoading) {
+    return (
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:px-5 lg:py-4">
+          <Link
+            to="/"
+            className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3"
+          >
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-green-600 text-lg font-black text-white shadow-sm sm:h-11 sm:w-11 sm:rounded-2xl sm:text-xl">
+              S
+            </div>
+
+            <div className="min-w-0 leading-none">
+              <div className="text-xl font-black tracking-tight text-black sm:text-2xl">
+                ellify
+              </div>
+
+              <p className="mt-1 hidden text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 sm:block">
+                Marketplace
+              </p>
+            </div>
+          </Link>
+
+          <div className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-500">
+            Loading account...
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  if (isAdmin) {
+    return (
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-3 py-3 sm:px-4 lg:flex-nowrap lg:px-5 lg:py-4">
+          <Link
+            to="/"
+            className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3"
+          >
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-green-600 text-lg font-black text-white shadow-sm sm:h-11 sm:w-11 sm:rounded-2xl sm:text-xl">
+              S
+            </div>
+
+            <div className="min-w-0 leading-none">
+              <div className="text-xl font-black tracking-tight text-black sm:text-2xl">
+                ellify
+              </div>
+
+              <p className="mt-1 hidden text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 sm:block">
+                Admin
+              </p>
+            </div>
+          </Link>
+
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <Link
+              to="/admin"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-green-600 px-4 text-sm font-black text-white transition hover:bg-green-700 sm:h-11 lg:rounded-2xl lg:px-5"
+            >
+              <ShieldCheck size={18} />
+              Admin
+            </Link>
+
+            <Link
+              to="/profile"
+              className="group flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 transition hover:border-green-200 hover:bg-green-50 lg:rounded-2xl"
+            >
+              {profilePhoto ? (
+                <img
+                  src={profilePhoto}
+                  alt="profile"
+                  className="h-8 w-8 rounded-full border-2 border-slate-200 object-cover transition group-hover:border-green-500 sm:h-9 sm:w-9"
+                />
+              ) : (
+                <div className="grid h-8 w-8 place-items-center rounded-full border-2 border-slate-200 bg-red-500 text-sm font-black text-white transition group-hover:border-green-500 sm:h-9 sm:w-9">
+                  {avatarInitial}
+                </div>
+              )}
+
+              <span className="hidden text-sm font-black text-slate-600 transition group-hover:text-green-600 sm:inline">
+                Profile
+              </span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 px-4 text-sm font-black text-red-600 transition hover:bg-red-50 sm:h-11 lg:rounded-2xl"
+            >
+              <LogOut size={18} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
+        </div>
+      </header>
+    );
   }
 
   return (
@@ -334,7 +447,10 @@ function Navbar() {
           </Link>
 
           {currentUser ? (
-            <Link to="/profile" className="group flex shrink-0 flex-col items-center">
+            <Link
+              to="/profile"
+              className="group flex shrink-0 flex-col items-center"
+            >
               {profilePhoto ? (
                 <img
                   src={profilePhoto}

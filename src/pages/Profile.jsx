@@ -17,7 +17,7 @@ const CLOUDINARY_CLOUD_NAME = "dy8l18zvz";
 const CLOUDINARY_UPLOAD_PRESET = "sellify_uploads";
 
 function Profile() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, userRole, roleLoading } = useAuth();
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -41,6 +41,8 @@ function Profile() {
       }
 
       try {
+        setError("");
+
         const userSnap = await getDoc(doc(db, "users", currentUser.uid));
 
         if (userSnap.exists()) {
@@ -52,34 +54,39 @@ function Profile() {
           setPhotoUrl(data.photoUrl || "");
         }
 
-        const q = query(
-          collection(db, "products"),
-          where("sellerId", "==", currentUser.uid)
-        );
+        if (userRole !== "admin") {
+          const q = query(
+            collection(db, "products"),
+            where("sellerId", "==", currentUser.uid)
+          );
 
-        const snap = await getDocs(q);
+          const snap = await getDocs(q);
 
-        const items = snap.docs
-          .map((item) => ({
-            id: item.id,
-            ...item.data(),
-          }))
-          .sort((a, b) => {
-            const aTime = a.createdAt?.toMillis?.() || 0;
-            const bTime = b.createdAt?.toMillis?.() || 0;
-            return bTime - aTime;
-          });
+          const items = snap.docs
+            .map((item) => ({
+              id: item.id,
+              ...item.data(),
+            }))
+            .sort((a, b) => {
+              const aTime = a.createdAt?.toMillis?.() || 0;
+              const bTime = b.createdAt?.toMillis?.() || 0;
+              return bTime - aTime;
+            });
 
-        setMyListings(items);
+          setMyListings(items);
+        }
       } catch (err) {
         console.error("Error fetching profile:", err);
+        setError("Failed to load profile. Please refresh and try again.");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchProfile();
-  }, [currentUser]);
+    if (!roleLoading) {
+      fetchProfile();
+    }
+  }, [currentUser, userRole, roleLoading]);
 
   function handleImageChange(e) {
     const file = e.target.files[0];
@@ -209,8 +216,154 @@ function Profile() {
     );
   }
 
-  if (loading) {
+  if (loading || roleLoading) {
     return <p className="py-20 text-center">Loading profile...</p>;
+  }
+
+  if (userRole === "admin") {
+    return (
+      <div className="min-h-screen overflow-x-hidden bg-slate-50 px-4 py-10">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-8">
+          <div className="relative inline-block">
+            <img
+              src={avatarUrl}
+              alt="Admin Profile"
+              className="mx-auto h-28 w-28 rounded-full border-4 border-green-100 bg-slate-100 object-cover"
+            />
+
+            <label
+              htmlFor="adminAvatarInput"
+              className="absolute bottom-1 right-1 cursor-pointer rounded-full bg-green-600 p-2 text-white shadow-lg transition hover:bg-green-700"
+            >
+              ✏️
+            </label>
+
+            <input
+              id="adminAvatarInput"
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+            />
+          </div>
+
+          <p className="mt-6 text-sm font-black uppercase tracking-[0.25em] text-green-600">
+            Admin Account
+          </p>
+
+          <h1 className="mt-2 text-3xl font-black text-slate-950">
+            {name || "Sellify Admin"}
+          </h1>
+
+          {username && (
+            <p className="mt-1 font-bold text-green-600">@{username}</p>
+          )}
+
+          <p className="mt-3 break-all text-slate-500">
+            {currentUser.email}
+          </p>
+
+          {error && (
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-600">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-700">
+              {success}
+            </div>
+          )}
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl bg-green-50 p-5">
+              <p className="text-sm font-bold text-green-600">Role</p>
+              <p className="mt-1 text-2xl font-black text-green-700">Admin</p>
+            </div>
+
+            <div className="rounded-2xl bg-slate-50 p-5">
+              <p className="text-sm font-bold text-slate-500">Status</p>
+              <p className="mt-1 text-2xl font-black text-slate-800">Active</p>
+            </div>
+          </div>
+
+          {imageFile && (
+            <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold text-blue-600">
+              📸 New admin profile photo selected.
+            </div>
+          )}
+
+          <form onSubmit={handleUpdate} className="mt-8 space-y-5 text-left">
+            <InputField
+              label="Full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+
+            <div>
+              <label className="mb-2 block text-sm font-bold text-slate-700">
+                Username
+              </label>
+
+              <div className="relative">
+                <span className="absolute left-5 top-4 font-bold text-slate-400">
+                  @
+                </span>
+
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(e.target.value.replace(/\s/g, "").toLowerCase())
+                  }
+                  className="min-w-0 w-full rounded-2xl border border-slate-300 py-4 pl-10 pr-5 outline-none transition focus:border-green-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <InputField label="Email" value={currentUser.email} disabled />
+
+            <InputField
+              label="Phone number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full rounded-2xl bg-green-600 py-4 text-lg font-black text-white transition hover:bg-green-700 disabled:opacity-60"
+            >
+              {saving ? "Saving..." : "Update Admin Profile"}
+            </button>
+          </form>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link
+              to="/"
+              className="rounded-2xl border border-slate-200 px-6 py-3 font-black text-slate-700 hover:bg-slate-50"
+            >
+              Go Home
+            </Link>
+
+            <Link
+              to="/admin"
+              className="rounded-2xl bg-green-600 px-6 py-3 font-black text-white hover:bg-green-700"
+            >
+              Go to Admin Dashboard
+            </Link>
+
+            <button
+              onClick={handleLogout}
+              className="rounded-2xl border border-red-200 px-6 py-3 font-black text-red-600 hover:bg-red-50"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

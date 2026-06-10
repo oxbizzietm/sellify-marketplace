@@ -41,8 +41,9 @@ function getSpecChips(product) {
 }
 
 function ProductCard({ product, compact = false }) {
-  const { currentUser } = useAuth();
+  const { currentUser, userRole, roleLoading } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = Boolean(currentUser && userRole === "admin");
 
   const [isFavorite, setIsFavorite] = useState(false);
   const [pop, setPop] = useState(false);
@@ -54,7 +55,12 @@ function ProductCard({ product, compact = false }) {
 
   useEffect(() => {
     async function checkFavorite() {
-      if (!currentUser || !product?.id) {
+      if (
+        !currentUser ||
+        !product?.id ||
+        roleLoading ||
+        userRole !== "user"
+      ) {
         setIsFavorite(false);
         return;
       }
@@ -76,11 +82,13 @@ function ProductCard({ product, compact = false }) {
     }
 
     checkFavorite();
-  }, [currentUser, product?.id]);
+  }, [currentUser, product?.id, roleLoading, userRole]);
 
   async function toggleFavorite(event) {
     event.preventDefault();
     event.stopPropagation();
+
+    if (isAdmin) return;
 
     if (!currentUser) {
       navigate("/login");
@@ -173,22 +181,28 @@ function ProductCard({ product, compact = false }) {
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={toggleFavorite}
-            className={`absolute grid place-items-center rounded-full bg-white/95 shadow-sm backdrop-blur transition-all duration-200 hover:bg-red-50 ${
-              isFavorite ? "text-red-500" : "text-slate-700 hover:text-red-500"
-            } ${compact ? "right-2 top-2 h-8 w-8 sm:right-3 sm:top-3 sm:h-10 sm:w-10" : "right-3 top-3 h-10 w-10"} ${
-              pop ? "scale-125" : "scale-100"
-            }`}
-            title={isFavorite ? "Remove from favourites" : "Add to favourites"}
-          >
-            <Heart
-              size={compact ? 16 : 18}
-              fill={isFavorite ? "currentColor" : "none"}
-              className="transition-all duration-200"
-            />
-          </button>
+          {!isAdmin && (
+            <button
+              type="button"
+              onClick={toggleFavorite}
+              className={`absolute grid place-items-center rounded-full bg-white/95 shadow-sm backdrop-blur transition-all duration-200 hover:bg-red-50 ${
+                isFavorite
+                  ? "text-red-500"
+                  : "text-slate-700 hover:text-red-500"
+              } ${compact ? "right-2 top-2 h-8 w-8 sm:right-3 sm:top-3 sm:h-10 sm:w-10" : "right-3 top-3 h-10 w-10"} ${
+                pop ? "scale-125" : "scale-100"
+              }`}
+              title={
+                isFavorite ? "Remove from favourites" : "Add to favourites"
+              }
+            >
+              <Heart
+                size={compact ? 16 : 18}
+                fill={isFavorite ? "currentColor" : "none"}
+                className="transition-all duration-200"
+              />
+            </button>
+          )}
 
           <div
             className={`absolute flex items-center justify-between gap-1.5 ${
@@ -282,16 +296,18 @@ function ProductCard({ product, compact = false }) {
                 </span>
               </span>
 
-              <span
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 text-xs font-black text-emerald-700 ${
-                  compact ? "px-2 py-1 sm:px-3 sm:py-1.5" : "px-3 py-1.5"
-                }`}
-              >
-                <MessageCircle size={14} />
-                <span className={compact ? "hidden sm:inline" : ""}>
-                  Chat
+              {!isAdmin && (
+                <span
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 text-xs font-black text-emerald-700 ${
+                    compact ? "px-2 py-1 sm:px-3 sm:py-1.5" : "px-3 py-1.5"
+                  }`}
+                >
+                  <MessageCircle size={14} />
+                  <span className={compact ? "hidden sm:inline" : ""}>
+                    Chat
+                  </span>
                 </span>
-              </span>
+              )}
             </div>
           </div>
         </div>

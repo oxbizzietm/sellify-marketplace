@@ -54,8 +54,9 @@ function Register() {
         email,
         phone,
         photoUrl: "",
+        role: "user",
         createdAt: new Date(),
-      });
+      }, { merge: true });
 
       navigate("/");
     } catch {

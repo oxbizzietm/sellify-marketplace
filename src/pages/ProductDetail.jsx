@@ -55,8 +55,12 @@ function NairaIcon({ className = "", size = 18 }) {
 
 function ProductDetail() {
   const { id } = useParams();
-  const { currentUser } = useAuth();
+  const { currentUser, userRole, roleLoading } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = Boolean(currentUser && userRole === "admin");
+  const canUseMarketplaceActions = Boolean(
+    !currentUser || (!roleLoading && userRole === "user")
+  );
 
   const [product, setProduct] = useState(null);
   const [seller, setSeller] = useState(null);
@@ -86,7 +90,7 @@ function ProductDetail() {
           setProduct(productData);
           setActiveImage(0);
 
-          if (currentUser) {
+          if (currentUser && !roleLoading && userRole === "user") {
             const favRef = doc(
               db,
               "users",
@@ -97,6 +101,8 @@ function ProductDetail() {
 
             const favSnap = await getDoc(favRef);
             setIsFavorite(favSnap.exists());
+          } else {
+            setIsFavorite(false);
           }
 
         } else {
@@ -111,7 +117,7 @@ function ProductDetail() {
     }
 
     fetchProduct();
-  }, [id, currentUser]);
+  }, [id, currentUser, roleLoading, userRole]);
 
   useEffect(() => {
     if (!product?.sellerId) {
@@ -132,6 +138,8 @@ function ProductDetail() {
   }, [product?.sellerId]);
 
   async function toggleFavorite() {
+    if (!canUseMarketplaceActions) return;
+
     if (!currentUser) {
       navigate("/login");
       return;
@@ -169,6 +177,7 @@ function ProductDetail() {
   }
 
   async function createOrOpenChat() {
+    if (!canUseMarketplaceActions) return null;
     if (!product || product.sold || !product.sellerId) return null;
 
     const productPhone = getProductContactInfo(product, seller, "");
@@ -214,6 +223,8 @@ function ProductDetail() {
   }
 
   async function startChat() {
+    if (!canUseMarketplaceActions) return;
+
     if (!currentUser) {
       navigate("/login");
       return;
@@ -249,6 +260,8 @@ function ProductDetail() {
   }
 
   async function makeOffer() {
+    if (!canUseMarketplaceActions) return;
+
     if (!currentUser) {
       navigate("/login");
       return;
@@ -348,6 +361,7 @@ function ProductDetail() {
   }
 
   async function markAsSold() {
+    if (!canUseMarketplaceActions) return;
     if (!product || !currentUser) return;
 
     const currentStock = getListingStock(product);
@@ -540,7 +554,11 @@ function ProductDetail() {
     productImages[activeImage] ||
     "https://placehold.co/1200x700?text=Sellify";
 
-  const isSeller = currentUser && currentUser.uid === product.sellerId;
+  const isSeller =
+    currentUser &&
+    !roleLoading &&
+    userRole === "user" &&
+    currentUser.uid === product.sellerId;
   const contactInfo = getProductContactInfo(product, seller);
 
   const sellerAvatar =
@@ -613,16 +631,21 @@ function ProductDetail() {
                 )}
               </div>
 
-              <button
-                onClick={toggleFavorite}
-                className={`absolute right-4 top-4 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/90 shadow-lg backdrop-blur transition-all duration-200 hover:bg-red-50 sm:right-5 sm:top-5 sm:h-12 sm:w-12 ${
-                  isFavorite
-                    ? "text-red-500"
-                    : "text-slate-700 hover:text-red-500"
-                } ${pop ? "scale-125" : "scale-100"}`}
-              >
-                <Heart size={22} fill={isFavorite ? "currentColor" : "none"} />
-              </button>
+              {canUseMarketplaceActions && (
+                <button
+                  onClick={toggleFavorite}
+                  className={`absolute right-4 top-4 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/90 shadow-lg backdrop-blur transition-all duration-200 hover:bg-red-50 sm:right-5 sm:top-5 sm:h-12 sm:w-12 ${
+                    isFavorite
+                      ? "text-red-500"
+                      : "text-slate-700 hover:text-red-500"
+                  } ${pop ? "scale-125" : "scale-100"}`}
+                >
+                  <Heart
+                    size={22}
+                    fill={isFavorite ? "currentColor" : "none"}
+                  />
+                </button>
+              )}
             </div>
 
             {productImages.length > 1 && (
@@ -776,7 +799,23 @@ function ProductDetail() {
             </div>
 
             <div className="mt-6 space-y-3">
-              {!isSeller ? (
+              {!canUseMarketplaceActions && currentUser ? (
+                <div className="rounded-2xl border border-green-100 bg-green-50 px-5 py-5 text-center">
+                  <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-white text-green-600">
+                    <ShieldCheck size={24} />
+                  </div>
+
+                  <p className="text-lg font-black text-green-700">
+                    {roleLoading ? "Checking account access" : "View only as admin"}
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {roleLoading
+                      ? "Marketplace actions will appear if this account is a normal user."
+                      : "Admin accounts can review this listing but cannot contact sellers, make offers, favorite products, or manage seller actions from the marketplace view."}
+                  </p>
+                </div>
+              ) : !isSeller ? (
                 <>
                   {product.sold ? (
                     <div className="rounded-2xl bg-red-50 py-5 text-center">
